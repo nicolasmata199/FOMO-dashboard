@@ -454,8 +454,9 @@ export default function Dashboard() {
             />
           </div>
           {fechaCarga !== hoyStr() && (
-            <div style={{background:'rgba(245,224,0,0.08)',border:'1px solid rgba(245,224,0,0.25)',borderRadius:'12px',padding:'10px 14px',marginBottom:'12px',fontSize:'13px',color:C.accent,fontWeight:600,display:'flex',alignItems:'center',gap:'8px'}}>
-              ✏️ Estás editando datos del {fechaCarga.split('-').reverse().join('/')} — los cambios van a quedar registrados en el historial
+            <div style={{background:'rgba(245,224,0,0.08)',border:'1px solid rgba(245,224,0,0.25)',borderRadius:'12px',padding:'12px 14px',marginBottom:'12px',fontSize:'13px',color:C.accent,fontWeight:600,lineHeight:1.7}}>
+              ✏️ Editando datos del {fechaCarga.split('-').reverse().join('/')}<br/>
+              <span style={{fontSize:'12px',fontWeight:400,color:C.label}}>Los valores ya están cargados — cambiá solo el que estaba mal y guardá.</span>
             </div>
           )}
           {[
