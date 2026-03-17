@@ -44,6 +44,7 @@ export default function Dashboard() {
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
+  const [fechaCarga, setFechaCarga] = useState(hoyStr())
   const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock'})
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [modal, setModal] = useState('')
@@ -89,11 +90,20 @@ export default function Dashboard() {
     })
   }
 
+  async function cargarFecha(fecha) {
+    const supabase = getSupabase()
+    const { data } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).single()
+    const { data: gas } = await supabase.from('gastos').select('*').eq('fecha', fecha).order('created_at', {ascending:false})
+    if (data) setDatosDia(data)
+    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+    if (gas) setGastos(gas)
+  }
+
   async function guardarDatos() {
     setSaving(true)
     const supabase = getSupabase()
     const { error } = await supabase.from('datos_diarios').upsert({
-      ...datosDia, fecha: hoyStr(),
+      ...datosDia, fecha: fechaCarga,
       usuario_nombre: usuario?.nombre,
       updated_at: new Date().toISOString()
     }, { onConflict: 'fecha' })
@@ -135,7 +145,7 @@ export default function Dashboard() {
   async function agregarGasto() {
     if (!fGasto.descripcion || !fGasto.monto) return
     const supabase = getSupabase()
-    await supabase.from('gastos').insert({...fGasto, monto: parseFloat(fGasto.monto), fecha: hoyStr(), usuario_nombre: usuario?.nombre})
+    await supabase.from('gastos').insert({...fGasto, monto: parseFloat(fGasto.monto), fecha: fechaCarga, usuario_nombre: usuario?.nombre})
     await logH('INSERT', `Registró gasto: ${fGasto.descripcion} — ${fmt(parseFloat(fGasto.monto))}`)
     setFGasto({descripcion:'',monto:'',categoria:'stock'})
     await loadAll()
@@ -152,7 +162,7 @@ export default function Dashboard() {
     const tipos = {'cheque_efectivo':'Cheque → Efectivo','echeq_efectivo':'E-cheq → Efectivo','banco_efectivo':'Banco → Efectivo','efectivo_banco':'Efectivo → Banco','transferencia_efectivo':'Transferencia → Efectivo','efectivo_transferencia':'Efectivo → Transferencia'}
     const tipoLabel = tipos[fCambio.tipo] || fCambio.tipo
     const desc = `Cambio: ${tipoLabel} | Original: ${fmt(orig)} | Recibido: ${fmt(recib)}${descuento > 0 ? ` | Descuento: ${fmt(descuento)}` : ''}${fCambio.descripcion ? ` — ${fCambio.descripcion}` : ''}`
-    await supabase.from('gastos').insert({descripcion: desc, monto: descuento > 0 ? descuento : 0, fecha: hoyStr(), categoria: 'cambio', usuario_nombre: usuario?.nombre})
+    await supabase.from('gastos').insert({descripcion: desc, monto: descuento > 0 ? descuento : 0, fecha: fechaCarga, categoria: 'cambio', usuario_nombre: usuario?.nombre})
     await logH('INSERT', `Registró cambio: ${tipoLabel} ${fmt(orig)} → ${fmt(recib)}`)
     setFCambio({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
     await loadAll()
@@ -435,7 +445,13 @@ export default function Dashboard() {
       {/* CARGAR */}
       {tab === 'cargar' && (
         <div className="fomo-content" style={S.page}>
-          <div style={S.sec}>Cobros del día — {fechaLabel()}</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'4px'}}>
+            <div style={S.sec}>Datos del día</div>
+            <input type="date" style={{background:C.inputBg,border:`1px solid ${C.cardBorder}`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'13px',padding:'8px 12px',outline:'none',cursor:'pointer'}}
+              value={fechaCarga}
+              onChange={e => { setFechaCarga(e.target.value); cargarFecha(e.target.value) }}
+            />
+          </div>
           {[
             {label:'Efectivo en caja ($)', key:'efectivo'},
             {label:'Transferencias recibidas ($)', key:'transferencias'},
