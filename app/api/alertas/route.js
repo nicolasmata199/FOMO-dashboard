@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { getSupabaseAdmin } from '../../../lib/supabase'
 
 function fmtPeso(n) {
-  return '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return '$ ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
 async function enviarWsp(mensaje) {
