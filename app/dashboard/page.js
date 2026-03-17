@@ -108,7 +108,8 @@ export default function Dashboard() {
       updated_at: new Date().toISOString()
     }, { onConflict: 'fecha' })
     if (!error) {
-      await logH('UPDATE', `Actualizó datos del día — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
+      const esHoy = fechaCarga === hoyStr()
+      await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
       setMsg('✓ Guardado')
       setTimeout(() => setMsg(''), 2000)
     }
@@ -452,6 +453,11 @@ export default function Dashboard() {
               onChange={e => { setFechaCarga(e.target.value); cargarFecha(e.target.value) }}
             />
           </div>
+          {fechaCarga !== hoyStr() && (
+            <div style={{background:'rgba(245,224,0,0.08)',border:'1px solid rgba(245,224,0,0.25)',borderRadius:'12px',padding:'10px 14px',marginBottom:'12px',fontSize:'13px',color:C.accent,fontWeight:600,display:'flex',alignItems:'center',gap:'8px'}}>
+              ✏️ Estás editando datos del {fechaCarga.split('-').reverse().join('/')} — los cambios van a quedar registrados en el historial
+            </div>
+          )}
           {[
             {label:'Efectivo en caja ($)', key:'efectivo'},
             {label:'Transferencias recibidas ($)', key:'transferencias'},
@@ -475,8 +481,8 @@ export default function Dashboard() {
             <input type="text" style={S.inp} placeholder="ej: día lento, falta stock..."
               value={datosDia.notas||''} onChange={e => setDatosDia({...datosDia, notas:e.target.value})}/>
           </div>
-          <button style={S.btn} onClick={guardarDatos} disabled={saving}>
-            {saving ? 'Guardando...' : `Guardar — ${usuario?.nombre}`}
+          <button style={{...S.btn, background: fechaCarga !== hoyStr() ? C.inputBg : C.accent, color: fechaCarga !== hoyStr() ? C.accent : '#000', border: fechaCarga !== hoyStr() ? `2px solid ${C.accent}` : 'none'}} onClick={guardarDatos} disabled={saving}>
+            {saving ? 'Guardando...' : fechaCarga !== hoyStr() ? `✏️ Guardar modificación del ${fechaCarga.split('-').reverse().join('/')}` : `Guardar — ${usuario?.nombre}`}
           </button>
 
           <div style={S.sec}>Registrar gasto del día</div>
