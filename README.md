@@ -36,3 +36,4 @@ VALUES ('UUID-DEL-USUARIO', 'Nicolas', 'owner');
 En Vercel > proyecto > Settings > Cron Jobs:
 - Path: /api/alertas
 - Schedule: 0 9 * * * (todos los días a las 9am)
+
