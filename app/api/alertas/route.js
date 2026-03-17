@@ -2,6 +2,10 @@ export const dynamic = 'force-dynamic'
 
 import { getSupabaseAdmin } from '../../../lib/supabase'
 
+function fmtPeso(n) {
+  return '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 async function enviarWsp(mensaje) {
   const apiKey = process.env.CALLMEBOT_API_KEY
   const numero = process.env.WHATSAPP_NUMERO
@@ -46,7 +50,7 @@ export async function GET() {
       for (const v of venc) {
         const dias = Math.round((new Date(v.fecha) - hoy) / 86400000)
         const cuando = dias === 0 ? 'HOY' : dias === 1 ? 'MAÑANA' : `en ${dias} dias`
-        const monto = '$' + Math.round(v.monto).toLocaleString('es-AR')
+        const monto = fmtPeso(v.monto)
         const msg = `⚠️ FOMO: Vence ${cuando} - ${v.descripcion} - ${monto}`
         alertas.push(msg)
         const r = await enviarWsp(msg)
@@ -57,7 +61,7 @@ export async function GET() {
     if (caja) {
       const cajaTotal = (caja.efectivo || 0) + (caja.transferencias || 0) + (caja.saldo_banco || 0)
       if (cajaTotal < 1000000) {
-        const msg = `🚨 FOMO: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`
+        const msg = `🚨 FOMO: Caja baja - ${fmtPeso(cajaTotal)} disponible`
         alertas.push(msg)
         const r = await enviarWsp(msg)
         wspResults.push(r)
