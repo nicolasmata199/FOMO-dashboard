@@ -218,8 +218,8 @@ export default function Dashboard() {
     inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
     sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
     btn: {width:'100%',background:C.accent,color:'#000',border:'none',borderRadius:'12px',padding:'14px',fontSize:'15px',fontWeight:700,fontFamily:"'Syne',sans-serif",cursor:'pointer'},
-    row: {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 0',borderBottom:`1px solid ${C.cardBorder}`,fontSize:'13px'},
-    label: {fontSize:'12px',color:C.label,display:'block',marginBottom:'8px',fontWeight:600},
+    row: {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 0',borderBottom:`1px solid ${C.cardBorder}`,fontSize:'14px'},
+    label: {fontSize:'13px',color:C.label,display:'block',marginBottom:'8px',fontWeight:600},
   }
 
   if (loading) return (
