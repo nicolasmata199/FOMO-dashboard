@@ -86,6 +86,7 @@ export default function Dashboard() {
     if (ddAll.data) {
       setDatosHoyPorUsuario(ddAll.data)
       const miRow = ddAll.data.find(r => r.usuario_id === currentUid)
+        || ddAll.data.find(r => !r.usuario_id)
       if (miRow) setDatosDia(miRow)
       else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
     }
@@ -101,8 +102,10 @@ export default function Dashboard() {
 
   async function cargarFecha(fecha) {
     const supabase = getSupabase()
-    const { data } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).eq('usuario_id', userId).single()
+    const { data: conId } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).eq('usuario_id', userId).single()
+    const { data: sinId } = !conId ? await supabase.from('datos_diarios').select('*').eq('fecha', fecha).is('usuario_id', null).single() : { data: null }
     const { data: gas } = await supabase.from('gastos').select('*').eq('fecha', fecha).order('created_at', {ascending:false})
+    const data = conId || sinId
     if (data) setDatosDia(data)
     else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
     if (gas) setGastos(gas)
