@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { getSupabaseAdmin } from '../../../lib/supabase'
+import { getSupabaseAdmin, enviarAlertaWhatsapp } from '../../../lib/supabase'
 
 export async function GET() {
   try {
@@ -32,14 +32,18 @@ export async function GET() {
         const dias = Math.round((new Date(v.fecha) - hoy) / 86400000)
         const cuando = dias === 0 ? 'HOY' : dias === 1 ? 'MAÑANA' : `en ${dias} dias`
         const monto = '$' + Math.round(v.monto).toLocaleString('es-AR')
-        alertas.push(`⚠️ FOMO ALERTA: Vence ${cuando} - ${v.descripcion} - ${monto}`)
+        const msg = `⚠️ FOMO: Vence ${cuando} - ${v.descripcion} - ${monto}`
+        await enviarAlertaWhatsapp(msg)
+        alertas.push(msg)
       }
     }
 
     if (caja) {
       const cajaTotal = (caja.efectivo || 0) + (caja.transferencias || 0) + (caja.saldo_banco || 0)
       if (cajaTotal < 1000000) {
-        alertas.push(`🚨 FOMO ALERTA: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`)
+        const msg = `🚨 FOMO: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`
+        await enviarAlertaWhatsapp(msg)
+        alertas.push(msg)
       }
     }
 

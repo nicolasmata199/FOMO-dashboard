@@ -149,7 +149,7 @@ export default function Dashboard() {
     const orig = parseFloat(fCambio.monto_original)
     const recib = parseFloat(fCambio.monto_recibido)
     const descuento = orig - recib
-    const tipos = {'cheque_efectivo':'Cheque → Efectivo','echeq_efectivo':'E-cheq → Efectivo','banco_efectivo':'Banco → Efectivo','efectivo_banco':'Efectivo → Banco','transferencia_efectivo':'Transferencia → Efectivo'}
+    const tipos = {'cheque_efectivo':'Cheque → Efectivo','echeq_efectivo':'E-cheq → Efectivo','banco_efectivo':'Banco → Efectivo','efectivo_banco':'Efectivo → Banco','transferencia_efectivo':'Transferencia → Efectivo','efectivo_transferencia':'Efectivo → Transferencia'}
     const tipoLabel = tipos[fCambio.tipo] || fCambio.tipo
     const desc = `Cambio: ${tipoLabel} | Original: ${fmt(orig)} | Recibido: ${fmt(recib)}${descuento > 0 ? ` | Descuento: ${fmt(descuento)}` : ''}${fCambio.descripcion ? ` — ${fCambio.descripcion}` : ''}`
     await supabase.from('gastos').insert({descripcion: desc, monto: descuento > 0 ? descuento : 0, fecha: hoyStr(), categoria: 'cambio', usuario_nombre: usuario?.nombre})
@@ -214,13 +214,90 @@ export default function Dashboard() {
     </div>
   )
 
+  const navItems = [
+    {id:'hoy',icon:'◉',label:'HOY'},
+    {id:'cargar',icon:'＋',label:'CARGAR'},
+    {id:'pagos',icon:'⚡',label:'PAGOS'},
+    {id:'pl',icon:'≋',label:'P&L'},
+    {id:'mas',icon:'···',label:'MÁS'},
+  ]
+
   return (
     <div style={{background:'#0c0c0e',minHeight:'100vh',color:'#eeecea'}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+      <style>{`
+        .fomo-desktop-layout { display: block; }
+        .fomo-sidebar { display: none; }
+        .fomo-main { width: 100%; }
+        .fomo-bottom-nav { display: flex; }
+        .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
+        @media (min-width: 768px) {
+          .fomo-desktop-layout { display: flex; min-height: 100vh; }
+          .fomo-sidebar {
+            display: flex; flex-direction: column;
+            width: 220px; flex-shrink: 0;
+            background: #0e0e10;
+            border-right: 1px solid rgba(255,255,255,0.07);
+            padding: 24px 0; position: sticky; top: 0; height: 100vh;
+          }
+          .fomo-sidebar-logo {
+            font-size: 22px; font-weight: 800; letter-spacing: -.5px;
+            padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 16px;
+          }
+          .fomo-sidebar-btn {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 24px; font-size: 13px; font-weight: 700;
+            letter-spacing: .04em; text-transform: uppercase;
+            cursor: pointer; border: none; background: none;
+            font-family: 'Syne', sans-serif; width: 100%; text-align: left;
+            transition: background .15s; border-radius: 0;
+          }
+          .fomo-sidebar-btn:hover { background: rgba(255,255,255,0.04); }
+          .fomo-sidebar-icon { font-size: 18px; width: 24px; text-align: center; }
+          .fomo-main { flex: 1; min-width: 0; }
+          .fomo-header { padding: 20px 32px !important; }
+          .fomo-header-logo { display: none; }
+          .fomo-content { max-width: 900px; margin: 0 auto; padding: 20px 32px 40px !important; }
+          .fomo-bottom-nav { display: none !important; }
+          .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          .fomo-card-title { font-size: 14px !important; }
+          .fomo-value { font-size: 26px !important; }
+          .fomo-row { font-size: 13px !important; }
+          .fomo-section { font-size: 11px !important; }
+          .fomo-modal-inner { border-radius: 16px !important; max-width: 480px; margin: auto; }
+          .fomo-modal-wrap { align-items: center !important; }
+          .fomo-sidebar-user {
+            margin-top: auto; padding: 16px 24px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            font-size: 11px; color: #7a7876; font-family: monospace;
+          }
+        }
+      `}</style>
+
+      {/* LAYOUT WRAPPER */}
+      <div className="fomo-desktop-layout">
+
+      {/* SIDEBAR (solo desktop) */}
+      <aside className="fomo-sidebar">
+        <div className="fomo-sidebar-logo">FO<span style={{color:'#f5a623'}}>MO</span></div>
+        {navItems.map(n => (
+          <button key={n.id} className="fomo-sidebar-btn"
+            style={{color: tab===n.id ? '#f5a623' : '#7a7876'}}
+            onClick={() => setTab(n.id)}>
+            <span className="fomo-sidebar-icon">{n.icon}</span>
+            {n.label}
+          </button>
+        ))}
+        <div className="fomo-sidebar-user">{usuario?.nombre}<br/><span style={{color:'#3a3a38'}}>{usuario?.rol}</span></div>
+      </aside>
+
+      {/* MAIN */}
+      <div className="fomo-main">
 
       {/* HEADER */}
-      <div style={{padding:'14px 16px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.07)',background:'#0c0c0e',position:'sticky',top:0,zIndex:100}}>
-        <div style={{fontSize:'19px',fontWeight:800,letterSpacing:'-.5px'}}>FO<span style={{color:'#f5a623'}}>MO</span></div>
+      <div className="fomo-header" style={{padding:'14px 16px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.07)',background:'#0c0c0e',position:'sticky',top:0,zIndex:100}}>
+        <div className="fomo-header-logo" style={{fontSize:'19px',fontWeight:800,letterSpacing:'-.5px'}}>FO<span style={{color:'#f5a623'}}>MO</span></div>
         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
           {msg && <span style={{fontSize:'11px',color:'#3ddc84',fontFamily:'monospace'}}>{msg}</span>}
           <span style={{fontSize:'10px',color:'#7a7876',background:'#1c1c20',padding:'5px 10px',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.07)',fontFamily:'monospace'}}>{fechaLabel()}</span>
@@ -246,8 +323,8 @@ export default function Dashboard() {
 
       {/* HOY */}
       {tab === 'hoy' && (
-        <div style={S.page}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'14px'}}>
+        <div className="fomo-content" style={S.page}>
+          <div className="fomo-metrics-grid" style={{display:'grid',gap:'9px',marginBottom:'14px'}}>
             {[
               {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
               {label:'CAJA TOTAL',val:fmtS(cajaTotal),color:colorCaja,sub:'efectivo + banco',prog:0},
@@ -325,7 +402,7 @@ export default function Dashboard() {
 
       {/* CARGAR */}
       {tab === 'cargar' && (
-        <div style={S.page}>
+        <div className="fomo-content" style={S.page}>
           <div style={S.sec}>Cobros del día — {fechaLabel()}</div>
           {[
             {label:'Efectivo en caja ($)', key:'efectivo'},
@@ -394,6 +471,7 @@ export default function Dashboard() {
               <option value="banco_efectivo">Banco → Efectivo</option>
               <option value="efectivo_banco">Efectivo → Banco</option>
               <option value="transferencia_efectivo">Transferencia → Efectivo</option>
+              <option value="efectivo_transferencia">Efectivo → Transferencia</option>
             </select>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
               <div>
@@ -442,7 +520,7 @@ export default function Dashboard() {
 
       {/* PAGOS */}
       {tab === 'pagos' && (
-        <div style={S.page}>
+        <div className="fomo-content" style={S.page}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
             <div style={S.sec}>Vencimientos a pagar</div>
             <button style={{fontSize:'11px',color:'#f5a623',background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('venc')}>+ Nuevo</button>
@@ -496,7 +574,7 @@ export default function Dashboard() {
 
       {/* P&L */}
       {tab === 'pl' && (
-        <div style={S.page}>
+        <div className="fomo-content" style={S.page}>
           <div style={S.sec}>P&L del mes — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
           <div style={S.card}>
             {[
@@ -563,7 +641,7 @@ export default function Dashboard() {
 
       {/* MÁS */}
       {tab === 'mas' && (
-        <div style={S.page}>
+        <div className="fomo-content" style={S.page}>
           <div style={S.sec}>Historial de cambios</div>
           <div style={S.card}>
             {historial.map((h,i)=>(
@@ -592,8 +670,8 @@ export default function Dashboard() {
 
       {/* MODAL VENCIMIENTO */}
       {modal === 'venc' && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}}>
-          <div style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
+        <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)setModal('')}}>
+          <div className="fomo-modal-inner" style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
             <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:'#eeecea'}}>Nuevo vencimiento</h3>
             {[
               {label:'Fecha', type:'date', key:'fecha'},
@@ -630,8 +708,8 @@ export default function Dashboard() {
 
       {/* MODAL DEUDA */}
       {modal === 'deuda' && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}}>
-          <div style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
+        <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)setModal('')}}>
+          <div className="fomo-modal-inner" style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
             <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:'#eeecea'}}>Nueva deuda</h3>
             {[
               {label:'Descripción', type:'text', key:'descripcion', placeholder:'ej: Tarjeta VISA Macro'},
@@ -663,15 +741,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* BOTTOM NAV */}
-      <nav style={{position:'fixed',bottom:0,left:0,right:0,background:'#141416',borderTop:'1px solid rgba(255,255,255,0.13)',display:'flex',zIndex:200}}>
-        {[
-          {id:'hoy',icon:'◉',label:'HOY'},
-          {id:'cargar',icon:'＋',label:'CARGAR'},
-          {id:'pagos',icon:'⚡',label:'PAGOS'},
-          {id:'pl',icon:'≋',label:'P&L'},
-          {id:'mas',icon:'···',label:'MÁS'},
-        ].map(n=>(
+      {/* BOTTOM NAV (solo mobile) */}
+      <nav className="fomo-bottom-nav" style={{position:'fixed',bottom:0,left:0,right:0,background:'#141416',borderTop:'1px solid rgba(255,255,255,0.13)',zIndex:200}}>
+        {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)}
             style={{flex:1,padding:'11px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',cursor:'pointer',fontSize:'9px',fontWeight:700,letterSpacing:'.06em',color:tab===n.id?'#f5a623':'#3a3a38',textTransform:'uppercase',border:'none',background:'none',fontFamily:"'Syne',sans-serif"}}>
             <span style={{fontSize:'17px',lineHeight:1}}>{n.icon}</span>
@@ -679,6 +751,9 @@ export default function Dashboard() {
           </button>
         ))}
       </nav>
+
+      </div>{/* end fomo-main */}
+      </div>{/* end fomo-desktop-layout */}
     </div>
   )
 }
