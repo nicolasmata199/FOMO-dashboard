@@ -1,14 +1,16 @@
-import { supabaseAdmin, enviarAlertaWhatsapp } from '../../../lib/supabase'
+export const dynamic = 'force-dynamic'
+
+import { getSupabaseAdmin } from '../../../lib/supabase'
 
 export async function GET() {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
     const hoy = new Date()
     const en3dias = new Date(hoy)
     en3dias.setDate(hoy.getDate() + 3)
     const fechaHoy = hoy.toISOString().split('T')[0]
     const fecha3d = en3dias.toISOString().split('T')[0]
 
-    // Vencimientos próximos 3 días
     const { data: venc } = await supabaseAdmin
       .from('vencimientos')
       .select('*')
@@ -17,7 +19,6 @@ export async function GET() {
       .lte('fecha', fecha3d)
       .order('fecha')
 
-    // Caja del día
     const { data: caja } = await supabaseAdmin
       .from('datos_diarios')
       .select('*')
@@ -26,25 +27,19 @@ export async function GET() {
 
     const alertas = []
 
-    // Alertas por vencimientos
     if (venc && venc.length > 0) {
       for (const v of venc) {
         const dias = Math.round((new Date(v.fecha) - hoy) / 86400000)
         const cuando = dias === 0 ? 'HOY' : dias === 1 ? 'MAÑANA' : `en ${dias} dias`
         const monto = '$' + Math.round(v.monto).toLocaleString('es-AR')
-        const msg = `⚠️ FOMO ALERTA: Vence ${cuando} - ${v.descripcion} - ${monto}`
-        await enviarAlertaWhatsapp(msg)
-        alertas.push(msg)
+        alertas.push(`⚠️ FOMO ALERTA: Vence ${cuando} - ${v.descripcion} - ${monto}`)
       }
     }
 
-    // Alerta por caja baja
     if (caja) {
       const cajaTotal = (caja.efectivo || 0) + (caja.transferencias || 0) + (caja.saldo_banco || 0)
       if (cajaTotal < 1000000) {
-        const msg = `🚨 FOMO ALERTA: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`
-        await enviarAlertaWhatsapp(msg)
-        alertas.push(msg)
+        alertas.push(`🚨 FOMO ALERTA: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`)
       }
     }
 
