@@ -174,8 +174,8 @@ export default function Dashboard() {
   const colorVentas = pctObj >= 100 ? '#3ddc84' : pctObj >= 70 ? '#f5a623' : '#ff5050'
 
   function tipoBadge(t) {
-    const m = {cheque:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',otro:'#7a7876'}
-    const l = {cheque:'CHQ',banco:'BCO',impuesto:'AFIP',sueldo:'SUE',servicio:'SVC',tarjeta:'TRJ',proveedor:'PRV',personal:'CRED',stock:'STK',alquiler:'ALQ',mercaderia:'MERC',prestamo:'PREST',otro:'OTRO'}
+    const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',otro:'#7a7876'}
+    const l = {cheque:'CHQ',echeq:'ECHEQ',banco:'BCO',impuesto:'AFIP',sueldo:'SUE',servicio:'SVC',tarjeta:'TRJ',proveedor:'PRV',personal:'CRED',stock:'STK',alquiler:'ALQ',mercaderia:'MERC',prestamo:'PREST',otro:'OTRO'}
     return <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:(m[t]||'#7a7876')+'22',color:m[t]||'#7a7876'}}>{l[t]||t.toUpperCase()}</span>
   }
 
@@ -251,7 +251,7 @@ export default function Dashboard() {
             {[
               {label:'Efectivo', val:datosDia.efectivo},
               {label:'Transferencias', val:datosDia.transferencias},
-              {label:'Cheques recibidos', val:datosDia.cheque_recibido},
+              {label:'Cheques / E-cheq recibidos', val:datosDia.cheque_recibido},
               {label:'Tarjeta (pendiente acred.)', val:datosDia.tarjeta_pendiente, color:'#f5a623'},
             ].map((r,i) => (
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
@@ -312,7 +312,7 @@ export default function Dashboard() {
           {[
             {label:'Efectivo en caja ($)', key:'efectivo'},
             {label:'Transferencias recibidas ($)', key:'transferencias'},
-            {label:'Cheques recibidos ($)', key:'cheque_recibido'},
+            {label:'Cheques / E-cheq recibidos ($)', key:'cheque_recibido'},
             {label:'Tarjeta pendiente de acreditación ($)', key:'tarjeta_pendiente', hint:'Lo que el banco todavía no acreditó'},
             {label:'Saldo banco ($)', key:'saldo_banco'},
             {label:'Ventas acumuladas del mes ($)', key:'ventas_acumuladas_mes'},
@@ -557,7 +557,8 @@ export default function Dashboard() {
             <div style={{marginBottom:'9px'}}>
               <label style={S.label}>Tipo</label>
               <select style={S.sel} value={fVenc.tipo} onChange={e=>setFVenc({...fVenc,tipo:e.target.value})}>
-                <option value="cheque">Cheque</option>
+                <option value="cheque">Cheque físico</option>
+                <option value="echeq">E-cheq (cheque electrónico)</option>
                 <option value="prestamo">Préstamo a cobrar</option>
                 <option value="banco">Banco / Préstamo</option>
                 <option value="impuesto">Impuesto / AFIP</option>
