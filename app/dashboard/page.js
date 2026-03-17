@@ -205,7 +205,7 @@ export default function Dashboard() {
     label: '#8b9099',
     muted: '#4a4e58',
     text: '#e8eaf0',
-    accent: '#f5a623',
+    accent: '#f5e000',
     green: '#34d399',
     red: '#f87171',
     blue: '#60a5fa',
