@@ -6,25 +6,17 @@ export async function GET() {
   try {
     const admin = getSupabaseAdmin()
 
-    // Test insert para ver el error exacto
-    const { error: e1 } = await admin.from('datos_diarios').upsert({
+    // Test upsert con el nuevo índice
+    const { error } = await admin.from('datos_diarios').upsert({
       fecha: '2099-01-01',
-      efectivo: 1,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'fecha' })
+      efectivo: 99,
+      usuario_id: null,
+    }, { onConflict: 'fecha,usuario_id' })
 
-    const { error: e2 } = await admin.from('datos_diarios').upsert({
-      fecha: '2099-01-02',
-      efectivo: 1,
-    }, { onConflict: 'fecha' })
+    // Limpiar
+    await admin.from('datos_diarios').delete().eq('fecha', '2099-01-01')
 
-    // Limpiar test rows
-    await admin.from('datos_diarios').delete().in('fecha', ['2099-01-01','2099-01-02'])
-
-    return Response.json({
-      con_updated_at: e1 ? e1.message : 'OK',
-      sin_updated_at: e2 ? e2.message : 'OK',
-    })
+    return Response.json({ upsert_test: error ? error.message : 'OK — constraint funciona' })
   } catch (e) {
     return Response.json({ error: e.message })
   }
