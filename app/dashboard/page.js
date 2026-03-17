@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [proveedores, setProveedores] = useState([])
   const [stock, setStock] = useState([])
   const [historial, setHistorial] = useState([])
+  const [userId, setUserId] = useState(null)
+  const [datosHoyPorUsuario, setDatosHoyPorUsuario] = useState([])
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -57,21 +59,23 @@ export default function Dashboard() {
       if (!session) { window.location.href = '/login'; return }
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
       setUsuario(profile || { nombre: session.user.email, rol: 'admin' })
-      await loadAll()
+      setUserId(session.user.id)
+      await loadAll(session.user.id)
       setLoading(false)
     })
   }, [])
 
-  async function loadAll() {
+  async function loadAll(uid) {
     const supabase = getSupabase()
-    const [v, d, g, p, s, h, dd] = await Promise.all([
+    const currentUid = uid || userId
+    const [v, d, g, p, s, h, ddAll] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado', false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa', true).order('monto', {ascending:false}),
       supabase.from('gastos').select('*').eq('fecha', hoyStr()).order('created_at', {ascending:false}),
       supabase.from('proveedores').select('*').order('deuda_actual', {ascending:false}),
       supabase.from('stock').select('*').order('categoria'),
       supabase.from('historial').select('*').order('created_at', {ascending:false}).limit(20),
-      supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()).single(),
+      supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()).order('created_at'),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -79,7 +83,12 @@ export default function Dashboard() {
     if (p.data) setProveedores(p.data)
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
-    if (dd.data) setDatosDia(dd.data)
+    if (ddAll.data) {
+      setDatosHoyPorUsuario(ddAll.data)
+      const miRow = ddAll.data.find(r => r.usuario_id === currentUid)
+      if (miRow) setDatosDia(miRow)
+      else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+    }
   }
 
   async function logH(accion, descripcion) {
@@ -92,7 +101,7 @@ export default function Dashboard() {
 
   async function cargarFecha(fecha) {
     const supabase = getSupabase()
-    const { data } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).single()
+    const { data } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).eq('usuario_id', userId).single()
     const { data: gas } = await supabase.from('gastos').select('*').eq('fecha', fecha).order('created_at', {ascending:false})
     if (data) setDatosDia(data)
     else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
@@ -104,9 +113,10 @@ export default function Dashboard() {
     const supabase = getSupabase()
     const { error } = await supabase.from('datos_diarios').upsert({
       ...datosDia, fecha: fechaCarga,
+      usuario_id: userId,
       usuario_nombre: usuario?.nombre,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'fecha' })
+    }, { onConflict: 'fecha,usuario_id' })
     if (!error) {
       const esHoy = fechaCarga === hoyStr()
       await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
@@ -185,17 +195,25 @@ export default function Dashboard() {
     window.location.href = '/login'
   }
 
-  const ventasHoy = datosDia.efectivo + datosDia.transferencias + datosDia.cheque_recibido
-  const cajaTotal = datosDia.efectivo + datosDia.saldo_banco
-  const disponibleTotal = cajaTotal + datosDia.tarjeta_pendiente + datosDia.transferencias
+  const agg = datosHoyPorUsuario.reduce((acc, r) => ({
+    efectivo: acc.efectivo + (r.efectivo || 0),
+    transferencias: acc.transferencias + (r.transferencias || 0),
+    tarjeta_pendiente: acc.tarjeta_pendiente + (r.tarjeta_pendiente || 0),
+    cheque_recibido: acc.cheque_recibido + (r.cheque_recibido || 0),
+    saldo_banco: acc.saldo_banco + (r.saldo_banco || 0),
+    ventas_acumuladas_mes: Math.max(acc.ventas_acumuladas_mes, r.ventas_acumuladas_mes || 0),
+  }), {efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0})
+  const ventasHoy = agg.efectivo + agg.transferencias + agg.cheque_recibido
+  const cajaTotal = agg.efectivo + agg.saldo_banco
+  const disponibleTotal = cajaTotal + agg.tarjeta_pendiente + agg.transferencias
   const v7 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 7 })
   const tv7 = v7.reduce((s, v) => s + v.monto, 0)
   const v15 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 15 })
   const tv15 = v15.reduce((s, v) => s + v.monto, 0)
   const posNeta = disponibleTotal - tv15
   const pctObj = ventasHoy > 0 ? Math.min(100, Math.round(ventasHoy / OBJ_DIA * 100)) : 0
-  const cmv = datosDia.ventas_acumuladas_mes * CMV_R
-  const mb = datosDia.ventas_acumuladas_mes - cmv
+  const cmv = agg.ventas_acumuladas_mes * CMV_R
+  const mb = agg.ventas_acumuladas_mes - cmv
   const neto = mb - FIJOS
   const stockValor = stock.reduce((s, i) => s + (i.cantidad * i.costo_unitario), 0)
   const totalDeudas = deudas.reduce((s, d) => s + d.monto, 0)
@@ -372,7 +390,7 @@ export default function Dashboard() {
               {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
               {label:'CAJA TOTAL',val:fmtS(cajaTotal),color:colorCaja,sub:'efectivo + banco',prog:0},
               {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmtS(datosDia.ventas_acumuladas_mes),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
+              {label:'MES ACTUAL',val:fmtS(agg.ventas_acumuladas_mes),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
               <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
@@ -387,10 +405,10 @@ export default function Dashboard() {
           <div style={S.sec}>Detalle de cobros de hoy</div>
           <div style={S.card}>
             {[
-              {label:'Efectivo', val:datosDia.efectivo},
-              {label:'Transferencias', val:datosDia.transferencias},
-              {label:'Cheques / E-cheq recibidos', val:datosDia.cheque_recibido},
-              {label:'Tarjeta (pendiente acred.)', val:datosDia.tarjeta_pendiente, color:C.accent},
+              {label:'Efectivo', val:agg.efectivo},
+              {label:'Transferencias', val:agg.transferencias},
+              {label:'Cheques / E-cheq recibidos', val:agg.cheque_recibido},
+              {label:'Tarjeta (pendiente acred.)', val:agg.tarjeta_pendiente, color:C.accent},
             ].map((r,i) => (
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
                 <span style={{color:C.label}}>{r.label}</span>
@@ -406,10 +424,10 @@ export default function Dashboard() {
           <div style={S.sec}>Posición de caja</div>
           <div style={S.card}>
             {[
-              {l:'Efectivo en caja', v:datosDia.efectivo, c:'#3ddc84'},
-              {l:'Saldo banco', v:datosDia.saldo_banco, c:'#3ddc84'},
-              {l:'Transferencias del día', v:datosDia.transferencias, c:'#3ddc84'},
-              {l:'Tarjeta pendiente acreditación', v:datosDia.tarjeta_pendiente, c:'#f5a623'},
+              {l:'Efectivo en caja', v:agg.efectivo, c:'#3ddc84'},
+              {l:'Saldo banco', v:agg.saldo_banco, c:'#3ddc84'},
+              {l:'Transferencias del día', v:agg.transferencias, c:'#3ddc84'},
+              {l:'Tarjeta pendiente acreditación', v:agg.tarjeta_pendiente, c:'#f5a623'},
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
@@ -426,6 +444,28 @@ export default function Dashboard() {
               <span style={{fontFamily:'monospace',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
             </div>
           </div>
+
+          {datosHoyPorUsuario.length > 1 && (
+            <>
+              <div style={S.sec}>Carga por usuario — hoy</div>
+              <div style={S.card}>
+                {datosHoyPorUsuario.map((r, i) => (
+                  <div key={i} style={{...S.row,...(i===datosHoyPorUsuario.length-1?{borderBottom:'none'}:{})}}>
+                    <div>
+                      <span style={{fontSize:'12px',fontWeight:700,color:r.usuario_id===userId?C.accent:C.text}}>{r.usuario_nombre||'—'}</span>
+                      {r.usuario_id===userId && <span style={{fontSize:'10px',color:C.muted,marginLeft:'6px'}}>(vos)</span>}
+                      <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',marginTop:'2px'}}>
+                        Efec: {fmt(r.efectivo||0)} · Trans: {fmt(r.transferencias||0)} · Banco: {fmt(r.saldo_banco||0)}
+                      </div>
+                    </div>
+                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.green}}>
+                      {fmt((r.efectivo||0)+(r.transferencias||0)+(r.cheque_recibido||0))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <div style={S.sec}>Últimos cambios del equipo</div>
           <div style={S.card}>
@@ -633,7 +673,7 @@ export default function Dashboard() {
           <div style={S.sec}>P&L del mes — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
           <div style={S.card}>
             {[
-              {l:'Ventas acumuladas', v:datosDia.ventas_acumuladas_mes, c:'#3ddc84'},
+              {l:'Ventas acumuladas', v:agg.ventas_acumuladas_mes, c:'#3ddc84'},
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
             ].map((r,i)=>(
               <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
