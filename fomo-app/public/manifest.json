@@ -1,0 +1,8 @@
+{
+  "name": "FOMO Dashboard",
+  "short_name": "FOMO",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0e",
+  "theme_color": "#f5a623"
+}
