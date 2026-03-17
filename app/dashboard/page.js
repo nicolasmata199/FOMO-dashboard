@@ -197,20 +197,35 @@ export default function Dashboard() {
     return <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:(m[t]||'#7a7876')+'22',color:m[t]||'#7a7876'}}>{l[t]||t.toUpperCase()}</span>
   }
 
+  const C = {
+    bg: '#13141a',
+    card: '#1c1e26',
+    cardBorder: 'rgba(255,255,255,0.09)',
+    inputBg: '#23252f',
+    label: '#8b9099',
+    muted: '#4a4e58',
+    text: '#e8eaf0',
+    accent: '#f5a623',
+    green: '#34d399',
+    red: '#f87171',
+    blue: '#60a5fa',
+  }
+
   const S = {
-    page: {padding:'14px 14px 80px',fontFamily:"'Syne',sans-serif"},
-    sec: {fontSize:'10px',fontWeight:700,letterSpacing:'.14em',color:'#3a3a38',textTransform:'uppercase',margin:'18px 0 10px'},
-    card: {background:'#141416',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'12px',padding:'13px',marginBottom:'10px'},
-    inp: {width:'100%',background:'#1c1c20',border:'1px solid rgba(255,255,255,0.13)',borderRadius:'8px',color:'#eeecea',fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'11px 12px',outline:'none',boxSizing:'border-box'},
-    sel: {width:'100%',background:'#1c1c20',border:'1px solid rgba(255,255,255,0.13)',borderRadius:'8px',color:'#7a7876',fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'11px 12px',outline:'none',boxSizing:'border-box'},
-    btn: {width:'100%',background:'#f5a623',color:'#000',border:'none',borderRadius:'10px',padding:'13px',fontSize:'14px',fontWeight:700,fontFamily:"'Syne',sans-serif",cursor:'pointer'},
-    row: {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.07)',fontSize:'12px'},
-    label: {fontSize:'11px',color:'#7a7876',display:'block',marginBottom:'7px',fontWeight:600},
+    page: {padding:'16px 16px 90px',fontFamily:"'Syne',sans-serif"},
+    sec: {fontSize:'11px',fontWeight:700,letterSpacing:'.12em',color:C.muted,textTransform:'uppercase',margin:'22px 0 12px'},
+    card: {background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',padding:'16px',marginBottom:'12px'},
+    inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
+    sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
+    btn: {width:'100%',background:C.accent,color:'#000',border:'none',borderRadius:'12px',padding:'14px',fontSize:'15px',fontWeight:700,fontFamily:"'Syne',sans-serif",cursor:'pointer'},
+    row: {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 0',borderBottom:`1px solid ${C.cardBorder}`,fontSize:'13px'},
+    label: {fontSize:'12px',color:C.label,display:'block',marginBottom:'8px',fontWeight:600},
   }
 
   if (loading) return (
-    <div style={{minHeight:'100vh',background:'#0c0c0e',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <p style={{color:'#f5a623',fontFamily:'monospace',fontSize:'13px'}}>Cargando FOMO...</p>
+    <div style={{minHeight:'100vh',background:C.bg,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'12px'}}>
+      <div style={{fontSize:'28px',fontWeight:800,fontFamily:"'Syne',sans-serif",color:C.text}}>FO<span style={{color:C.accent}}>MO</span></div>
+      <p style={{color:C.label,fontFamily:'DM Mono,monospace',fontSize:'12px',letterSpacing:'.08em'}}>cargando...</p>
     </div>
   )
 
@@ -223,55 +238,69 @@ export default function Dashboard() {
   ]
 
   return (
-    <div style={{background:'#0c0c0e',minHeight:'100vh',color:'#eeecea'}}>
+    <div style={{background:C.bg,minHeight:'100vh',color:C.text}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
       <style>{`
+        * { box-sizing: border-box; }
+        body { background: #13141a; }
         .fomo-desktop-layout { display: block; }
         .fomo-sidebar { display: none; }
         .fomo-main { width: 100%; }
         .fomo-bottom-nav { display: flex; }
         .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
-        @media (min-width: 768px) {
+        .fomo-metric-value { font-size: 22px; }
+        .fomo-metric-label { font-size: 10px; }
+        @media (min-width: 900px) {
           .fomo-desktop-layout { display: flex; min-height: 100vh; }
           .fomo-sidebar {
             display: flex; flex-direction: column;
-            width: 220px; flex-shrink: 0;
-            background: #0e0e10;
-            border-right: 1px solid rgba(255,255,255,0.07);
-            padding: 24px 0; position: sticky; top: 0; height: 100vh;
+            width: 240px; flex-shrink: 0;
+            background: #0f1016;
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 0; position: sticky; top: 0; height: 100vh;
+            overflow: hidden;
           }
           .fomo-sidebar-logo {
-            font-size: 22px; font-weight: 800; letter-spacing: -.5px;
-            padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.07);
-            margin-bottom: 16px;
+            font-size: 26px; font-weight: 800; letter-spacing: -1px;
+            padding: 28px 28px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 12px;
           }
           .fomo-sidebar-btn {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 24px; font-size: 13px; font-weight: 700;
-            letter-spacing: .04em; text-transform: uppercase;
+            display: flex; align-items: center; gap: 14px;
+            padding: 13px 28px; font-size: 13px; font-weight: 700;
+            letter-spacing: .05em; text-transform: uppercase;
             cursor: pointer; border: none; background: none;
             font-family: 'Syne', sans-serif; width: 100%; text-align: left;
-            transition: background .15s; border-radius: 0;
+            transition: all .15s; position: relative;
           }
-          .fomo-sidebar-btn:hover { background: rgba(255,255,255,0.04); }
-          .fomo-sidebar-icon { font-size: 18px; width: 24px; text-align: center; }
-          .fomo-main { flex: 1; min-width: 0; }
-          .fomo-header { padding: 20px 32px !important; }
+          .fomo-sidebar-btn:hover { background: rgba(255,255,255,0.05); }
+          .fomo-sidebar-btn.active {
+            background: rgba(245,166,35,0.08);
+            color: #f5a623 !important;
+          }
+          .fomo-sidebar-btn.active::before {
+            content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+            width: 3px; background: #f5a623; border-radius: 0 3px 3px 0;
+          }
+          .fomo-sidebar-icon { font-size: 20px; width: 26px; text-align: center; }
+          .fomo-main { flex: 1; min-width: 0; overflow-y: auto; }
+          .fomo-header { padding: 22px 40px !important; }
           .fomo-header-logo { display: none; }
-          .fomo-content { max-width: 900px; margin: 0 auto; padding: 20px 32px 40px !important; }
+          .fomo-content { max-width: 760px; margin: 0 auto; padding: 28px 40px 60px !important; }
           .fomo-bottom-nav { display: none !important; }
-          .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; }
-          .fomo-card-title { font-size: 14px !important; }
-          .fomo-value { font-size: 26px !important; }
-          .fomo-row { font-size: 13px !important; }
-          .fomo-section { font-size: 11px !important; }
-          .fomo-modal-inner { border-radius: 16px !important; max-width: 480px; margin: auto; }
+          .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
+          .fomo-metric-value { font-size: 28px !important; }
+          .fomo-metric-label { font-size: 11px !important; }
+          .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
           .fomo-modal-wrap { align-items: center !important; }
           .fomo-sidebar-user {
-            margin-top: auto; padding: 16px 24px;
+            margin-top: auto; padding: 20px 28px;
             border-top: 1px solid rgba(255,255,255,0.07);
-            font-size: 11px; color: #7a7876; font-family: monospace;
+            font-size: 12px; color: #8b9099; font-family: monospace; line-height: 1.6;
           }
+          .fomo-card-row { font-size: 14px !important; padding: 13px 0 !important; }
+          .fomo-section-title { font-size: 12px !important; margin: 28px 0 14px !important; }
         }
       `}</style>
 
@@ -280,42 +309,45 @@ export default function Dashboard() {
 
       {/* SIDEBAR (solo desktop) */}
       <aside className="fomo-sidebar">
-        <div className="fomo-sidebar-logo">FO<span style={{color:'#f5a623'}}>MO</span></div>
+        <div className="fomo-sidebar-logo">FO<span style={{color:C.accent}}>MO</span></div>
         {navItems.map(n => (
-          <button key={n.id} className="fomo-sidebar-btn"
-            style={{color: tab===n.id ? '#f5a623' : '#7a7876'}}
+          <button key={n.id} className={`fomo-sidebar-btn${tab===n.id?' active':''}`}
+            style={{color: tab===n.id ? C.accent : C.label}}
             onClick={() => setTab(n.id)}>
             <span className="fomo-sidebar-icon">{n.icon}</span>
             {n.label}
           </button>
         ))}
-        <div className="fomo-sidebar-user">{usuario?.nombre}<br/><span style={{color:'#3a3a38'}}>{usuario?.rol}</span></div>
+        <div className="fomo-sidebar-user">
+          <div style={{fontWeight:700,color:C.text,marginBottom:'2px'}}>{usuario?.nombre}</div>
+          <div style={{color:C.muted,fontSize:'11px'}}>{usuario?.rol}</div>
+        </div>
       </aside>
 
       {/* MAIN */}
       <div className="fomo-main">
 
       {/* HEADER */}
-      <div className="fomo-header" style={{padding:'14px 16px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.07)',background:'#0c0c0e',position:'sticky',top:0,zIndex:100}}>
-        <div className="fomo-header-logo" style={{fontSize:'19px',fontWeight:800,letterSpacing:'-.5px'}}>FO<span style={{color:'#f5a623'}}>MO</span></div>
-        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-          {msg && <span style={{fontSize:'11px',color:'#3ddc84',fontFamily:'monospace'}}>{msg}</span>}
-          <span style={{fontSize:'10px',color:'#7a7876',background:'#1c1c20',padding:'5px 10px',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.07)',fontFamily:'monospace'}}>{fechaLabel()}</span>
-          <span style={{fontSize:'10px',color:'#f5a623',fontFamily:'monospace',cursor:'pointer'}} onClick={logout}>salir</span>
+      <div className="fomo-header" style={{padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${C.cardBorder}`,background:C.bg,position:'sticky',top:0,zIndex:100}}>
+        <div className="fomo-header-logo" style={{fontSize:'20px',fontWeight:800,letterSpacing:'-.5px',fontFamily:"'Syne',sans-serif"}}>FO<span style={{color:C.accent}}>MO</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+          {msg && <span style={{fontSize:'12px',color:C.green,fontFamily:'DM Mono,monospace',fontWeight:600}}>{msg}</span>}
+          <span style={{fontSize:'11px',color:C.label,background:C.card,padding:'6px 12px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,fontFamily:'DM Mono,monospace'}}>{fechaLabel()}</span>
+          <button onClick={logout} style={{fontSize:'11px',color:C.label,background:'none',border:`1px solid ${C.cardBorder}`,borderRadius:'8px',padding:'6px 12px',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:600}}>salir</button>
         </div>
       </div>
 
       {/* ALERTAS */}
       {tab === 'hoy' && (
-        <div style={{padding:'10px 14px 0'}}>
+        <div style={{padding:'12px 16px 0'}}>
           {vencimientos.filter(v => diasHasta(v.fecha) === 0).length > 0 && (
-            <div style={{background:'rgba(255,80,80,0.12)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:'10px',padding:'11px 13px',fontSize:'12px',color:'#ff8080',marginBottom:'8px',lineHeight:1.5}}>
-              <strong>HOY vencen: </strong>{vencimientos.filter(v=>diasHasta(v.fecha)===0).map(v=>v.descripcion).join(', ')} — {fmt(vencimientos.filter(v=>diasHasta(v.fecha)===0).reduce((s,v)=>s+v.monto,0))}
+            <div style={{background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:'#fca5a5',marginBottom:'10px',lineHeight:1.6,fontWeight:500}}>
+              🔴 <strong>HOY vencen:</strong> {vencimientos.filter(v=>diasHasta(v.fecha)===0).map(v=>v.descripcion).join(', ')} — {fmt(vencimientos.filter(v=>diasHasta(v.fecha)===0).reduce((s,v)=>s+v.monto,0))}
             </div>
           )}
           {vencimientos.filter(v => diasHasta(v.fecha) === 1).length > 0 && (
-            <div style={{background:'rgba(245,166,35,0.12)',border:'1px solid rgba(245,166,35,0.2)',borderRadius:'10px',padding:'11px 13px',fontSize:'12px',color:'#f5c06a',marginBottom:'8px',lineHeight:1.5}}>
-              <strong>Mañana vencen: </strong>{vencimientos.filter(v=>diasHasta(v.fecha)===1).map(v=>v.descripcion).join(', ')}
+            <div style={{background:'rgba(245,166,35,0.1)',border:'1px solid rgba(245,166,35,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:'#fcd34d',marginBottom:'10px',lineHeight:1.6,fontWeight:500}}>
+              🟡 <strong>Mañana vencen:</strong> {vencimientos.filter(v=>diasHasta(v.fecha)===1).map(v=>v.descripcion).join(', ')}
             </div>
           )}
         </div>
@@ -328,15 +360,15 @@ export default function Dashboard() {
             {[
               {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
               {label:'CAJA TOTAL',val:fmtS(cajaTotal),color:colorCaja,sub:'efectivo + banco',prog:0},
-              {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:'#ff5050',sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmtS(datosDia.ventas_acumuladas_mes),color:'#5b9fff',sub:`${new Date().getDate()} días`,prog:0},
+              {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
+              {label:'MES ACTUAL',val:fmtS(datosDia.ventas_acumuladas_mes),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
-              <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'15px'}}>
-                <div style={{position:'absolute',top:0,left:0,right:0,height:'2px',background:k.color}}/>
-                <div style={{fontSize:'10px',color:'#7a7876',marginBottom:'6px',fontWeight:600,letterSpacing:'.04em'}}>{k.label}</div>
-                <div style={{fontSize:'21px',fontWeight:700,fontFamily:'DM Mono,monospace',letterSpacing:'-1px',color:k.color,lineHeight:1}}>{k.val}</div>
-                <div style={{fontSize:'10px',color:'#7a7876',marginTop:'5px',fontFamily:'monospace'}}>{k.sub}</div>
-                {k.prog > 0 && <div style={{background:'#1c1c20',borderRadius:'3px',height:'3px',marginTop:'8px',overflow:'hidden'}}><div style={{height:'100%',borderRadius:'3px',background:k.color,width:k.prog+'%'}}/></div>}
+              <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
+                <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
+                <div className="fomo-metric-label" style={{color:C.label,marginBottom:'8px',fontWeight:700,letterSpacing:'.06em',textTransform:'uppercase'}}>{k.label}</div>
+                <div className="fomo-metric-value" style={{fontWeight:800,fontFamily:'DM Mono,monospace',letterSpacing:'-1px',color:k.color,lineHeight:1}}>{k.val}</div>
+                <div style={{fontSize:'11px',color:C.muted,marginTop:'6px',fontFamily:'DM Mono,monospace'}}>{k.sub}</div>
+                {k.prog > 0 && <div style={{background:C.inputBg,borderRadius:'4px',height:'4px',marginTop:'10px',overflow:'hidden'}}><div style={{height:'100%',borderRadius:'4px',background:k.color,width:k.prog+'%',transition:'width .4s'}}/></div>}
               </div>
             ))}
           </div>
@@ -347,16 +379,16 @@ export default function Dashboard() {
               {label:'Efectivo', val:datosDia.efectivo},
               {label:'Transferencias', val:datosDia.transferencias},
               {label:'Cheques / E-cheq recibidos', val:datosDia.cheque_recibido},
-              {label:'Tarjeta (pendiente acred.)', val:datosDia.tarjeta_pendiente, color:'#f5a623'},
+              {label:'Tarjeta (pendiente acred.)', val:datosDia.tarjeta_pendiente, color:C.accent},
             ].map((r,i) => (
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
-                <span style={{color:'#7a7876'}}>{r.label}</span>
+                <span style={{color:C.label}}>{r.label}</span>
                 <span style={{fontFamily:'monospace',fontSize:'12px',color:r.color||'#eeecea'}}>{fmt(r.val||0)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'12px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px'}}>
               <span>Total cobrado hoy</span>
-              <span style={{fontFamily:'monospace',color:'#3ddc84'}}>{fmt(ventasHoy)}</span>
+              <span style={{fontFamily:'monospace',color:C.green}}>{fmt(ventasHoy)}</span>
             </div>
           </div>
 
@@ -369,7 +401,7 @@ export default function Dashboard() {
               {l:'Tarjeta pendiente acreditación', v:datosDia.tarjeta_pendiente, c:'#f5a623'},
             ].map((r,i) => (
               <div key={i} style={S.row}>
-                <span style={{color:'#7a7876',fontSize:'12px'}}>{r.l}</span>
+                <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
                 <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v||0)}</span>
               </div>
             ))}
@@ -377,7 +409,7 @@ export default function Dashboard() {
               <span>Total disponible</span>
               <span style={{fontFamily:'monospace',color:disponibleTotal>2e6?'#3ddc84':'#f5a623'}}>{fmt(disponibleTotal)}</span>
             </div>
-            <div style={S.row}><span style={{color:'#7a7876',fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050'}}>−{fmt(tv15)}</span></div>
+            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(tv15)}</span></div>
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'14px',background:'rgba(245,166,35,0.06)',margin:'4px -13px -13px',padding:'12px 13px',borderRadius:'0 0 12px 12px'}}>
               <span>Posición neta 15d</span>
               <span style={{fontFamily:'monospace',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
@@ -389,13 +421,13 @@ export default function Dashboard() {
             {historial.slice(0,5).map((h,i) => (
               <div key={i} style={{...S.row,...(i===4?{borderBottom:'none'}:{})}}>
                 <div>
-                  <span style={{fontSize:'11px',color:'#f5a623',fontWeight:600}}>{h.usuario_nombre} </span>
-                  <span style={{fontSize:'11px',color:'#7a7876'}}>{h.descripcion}</span>
+                  <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre} </span>
+                  <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
                 </div>
-                <span style={{fontSize:'10px',color:'#3a3a38',fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</span>
+                <span style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</span>
               </div>
             ))}
-            {historial.length === 0 && <p style={{fontSize:'12px',color:'#3a3a38',textAlign:'center',padding:'12px 0'}}>Sin cambios hoy</p>}
+            {historial.length === 0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'12px 0'}}>Sin cambios hoy</p>}
           </div>
         </div>
       )}
@@ -419,7 +451,7 @@ export default function Dashboard() {
                 placeholder="0"
                 onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value)||0})}
               />
-              {f.hint && <p style={{fontSize:'10px',color:'#3a3a38',marginTop:'5px',fontFamily:'monospace'}}>{f.hint}</p>}
+              {f.hint && <p style={{fontSize:'10px',color:C.muted,marginTop:'5px',fontFamily:'monospace'}}>{f.hint}</p>}
             </div>
           ))}
           <div style={S.card}>
@@ -457,7 +489,7 @@ export default function Dashboard() {
                 </select>
               </div>
             </div>
-            <button style={{...S.btn,marginTop:'12px',background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:'#eeecea'}} onClick={agregarGasto}>
+            <button style={{...S.btn,marginTop:'12px',background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.text}} onClick={agregarGasto}>
               + Registrar gasto
             </button>
           </div>
@@ -507,9 +539,9 @@ export default function Dashboard() {
                     <div>
                       <span style={{fontSize:'12px'}}>{g.descripcion} </span>
                       {tipoBadge(g.categoria)}
-                      <div style={{fontSize:'10px',color:'#3a3a38',fontFamily:'monospace',marginTop:'2px'}}>{g.usuario_nombre}</div>
+                      <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',marginTop:'2px'}}>{g.usuario_nombre}</div>
                     </div>
-                    <span style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050'}}>{fmt(g.monto)}</span>
+                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmt(g.monto)}</span>
                   </div>
                 ))}
               </div>
@@ -523,7 +555,7 @@ export default function Dashboard() {
         <div className="fomo-content" style={S.page}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
             <div style={S.sec}>Vencimientos a pagar</div>
-            <button style={{fontSize:'11px',color:'#f5a623',background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('venc')}>+ Nuevo</button>
+            <button style={{fontSize:'11px',color:C.accent,background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('venc')}>+ Nuevo</button>
           </div>
           <div style={{...S.card,padding:0,overflow:'hidden'}}>
             {vencimientos.map((v,i) => {
@@ -534,39 +566,39 @@ export default function Dashboard() {
                 <div key={i} style={{padding:'11px 13px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',alignItems:'center',gap:'8px'}}>
                   <div style={{flex:1}}>
                     <div style={{fontSize:'12px',marginBottom:'3px'}}>{v.descripcion} {tipoBadge(v.tipo)}</div>
-                    <div style={{fontSize:'10px',color:'#7a7876',fontFamily:'monospace'}}>{v.fecha.split('-').reverse().join('/')} · {v.usuario_nombre||'sistema'}</div>
+                    <div style={{fontSize:'10px',color:C.label,fontFamily:'monospace'}}>{v.fecha.split('-').reverse().join('/')} · {v.usuario_nombre||'sistema'}</div>
                   </div>
                   <div style={{textAlign:'right'}}>
-                    <div style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050',marginBottom:'3px'}}>{fmtS(v.monto)}</div>
+                    <div style={{fontFamily:'monospace',fontSize:'12px',color:C.red,marginBottom:'3px'}}>{fmtS(v.monto)}</div>
                     <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',background:col+'22',color:col,fontFamily:'monospace'}}>{badge}</span>
                   </div>
-                  <button style={{background:'none',border:'none',color:'#3ddc84',cursor:'pointer',fontSize:'16px',padding:'4px'}} onClick={()=>marcarPagado(v.id, v.descripcion)}>✓</button>
+                  <button style={{background:'none',border:'none',color:C.green,cursor:'pointer',fontSize:'16px',padding:'4px'}} onClick={()=>marcarPagado(v.id, v.descripcion)}>✓</button>
                 </div>
               )
             })}
-            {vencimientos.length === 0 && <p style={{fontSize:'12px',color:'#3a3a38',textAlign:'center',padding:'20px'}}>Sin vencimientos pendientes</p>}
+            {vencimientos.length === 0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'20px'}}>Sin vencimientos pendientes</p>}
           </div>
 
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px',marginTop:'4px'}}>
             <div style={S.sec}>Deudas registradas</div>
-            <button style={{fontSize:'11px',color:'#f5a623',background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('deuda')}>+ Nueva</button>
+            <button style={{fontSize:'11px',color:C.accent,background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('deuda')}>+ Nueva</button>
           </div>
           <div style={{...S.card,padding:0,overflow:'hidden'}}>
             {deudas.map((d,i) => (
               <div key={i} style={{padding:'11px 13px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',alignItems:'center',gap:'8px'}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'12px',marginBottom:'3px'}}>{d.descripcion} {tipoBadge(d.tipo)}</div>
-                  <div style={{fontSize:'10px',color:'#3a3a38',fontFamily:'monospace'}}>{d.usuario_nombre||'sistema'}</div>
+                  <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{d.usuario_nombre||'sistema'}</div>
                 </div>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050'}}>{fmtS(d.monto)}</span>
-                <button style={{background:'none',border:'none',color:'#3a3a38',cursor:'pointer',fontSize:'13px',padding:'4px'}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmtS(d.monto)}</span>
+                <button style={{background:'none',border:'none',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'4px'}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
               </div>
             ))}
           </div>
           <div style={{...S.card,background:'rgba(245,166,35,0.06)',border:'1px solid rgba(245,166,35,0.15)'}}>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:'14px',fontWeight:700}}>
               <span>Total deuda registrada</span>
-              <span style={{fontFamily:'monospace',color:'#ff5050'}}>{fmtS(totalDeudas)}</span>
+              <span style={{fontFamily:'monospace',color:C.red}}>{fmtS(totalDeudas)}</span>
             </div>
           </div>
         </div>
@@ -581,7 +613,7 @@ export default function Dashboard() {
               {l:'Ventas acumuladas', v:datosDia.ventas_acumuladas_mes, c:'#3ddc84'},
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
             ].map((r,i)=>(
-              <div key={i} style={S.row}><span style={{color:'#7a7876',fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
+              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
             ))}
             <div style={{...S.row,fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
               <span>Margen bruto</span><span style={{fontFamily:'monospace',color:mb>0?'#3ddc84':'#ff5050'}}>{fmt(mb)}</span>
@@ -592,7 +624,7 @@ export default function Dashboard() {
               {l:'Inversor (1.500 USD)', v:-2160000},
               {l:'Santander + ARCA + otros', v:-2628220},
             ].map((r,i)=>(
-              <div key={i} style={S.row}><span style={{color:'#7a7876',fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050'}}>{fmt(r.v)}</span></div>
+              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmt(r.v)}</span></div>
             ))}
             <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'14px',background:'rgba(245,166,35,0.06)',margin:'4px -13px -13px',padding:'12px 13px',borderRadius:'0 0 12px 12px'}}>
               <span>Resultado neto est.</span><span style={{fontFamily:'monospace',color:neto>0?'#3ddc84':'#ff5050'}}>{fmt(neto)}</span>
@@ -602,13 +634,13 @@ export default function Dashboard() {
           <div style={S.sec}>Margen por categoría (estimado)</div>
           <div style={S.card}>
             {[
-              {cat:'Celulares', pct:'14-18%', color:'#5b9fff', nota:'Volumen alto, margen bajo'},
-              {cat:'Accesorios (fundas, templados)', pct:'74-89%', color:'#3ddc84', nota:'El negocio rentable'},
-              {cat:'Electrónica (auriculares, etc)', pct:'55-60%', color:'#f5a623', nota:'Margen intermedio'},
-              {cat:'Servicio técnico', pct:'100%', color:'#3ddc84', nota:'Sin costo de mercadería'},
+              {cat:'Celulares', pct:'14-18%', color:C.blue, nota:'Volumen alto, margen bajo'},
+              {cat:'Accesorios (fundas, templados)', pct:'74-89%', color:C.green, nota:'El negocio rentable'},
+              {cat:'Electrónica (auriculares, etc)', pct:'55-60%', color:C.accent, nota:'Margen intermedio'},
+              {cat:'Servicio técnico', pct:'100%', color:C.green, nota:'Sin costo de mercadería'},
             ].map((r,i)=>(
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
-                <div><div style={{fontSize:'12px',marginBottom:'2px'}}>{r.cat}</div><div style={{fontSize:'10px',color:'#3a3a38'}}>{r.nota}</div></div>
+                <div><div style={{fontSize:'12px',marginBottom:'2px'}}>{r.cat}</div><div style={{fontSize:'10px',color:C.muted}}>{r.nota}</div></div>
                 <span style={{fontFamily:'monospace',fontSize:'13px',fontWeight:700,color:r.color}}>{r.pct}</span>
               </div>
             ))}
@@ -618,12 +650,12 @@ export default function Dashboard() {
           <div style={S.card}>
             {stock.map((s,i)=>(
               <div key={i} style={{...S.row,...(i===stock.length-1?{borderBottom:'none'}:{})}}>
-                <div><div style={{fontSize:'12px'}}>{s.descripcion||s.categoria}</div><div style={{fontSize:'10px',color:'#7a7876',fontFamily:'monospace'}}>{s.cantidad} uds · {fmtS(s.costo_unitario)} c/u</div></div>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:'#5b9fff'}}>{fmtS(s.cantidad*s.costo_unitario)}</span>
+                <div><div style={{fontSize:'12px'}}>{s.descripcion||s.categoria}</div><div style={{fontSize:'10px',color:C.label,fontFamily:'monospace'}}>{s.cantidad} uds · {fmtS(s.costo_unitario)} c/u</div></div>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.blue}}>{fmtS(s.cantidad*s.costo_unitario)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
-              <span>Stock total valorizado</span><span style={{fontFamily:'monospace',color:'#5b9fff'}}>{fmtS(stockValor)}</span>
+              <span>Stock total valorizado</span><span style={{fontFamily:'monospace',color:C.blue}}>{fmtS(stockValor)}</span>
             </div>
           </div>
 
@@ -631,8 +663,8 @@ export default function Dashboard() {
           <div style={S.card}>
             {proveedores.map((p,i)=>(
               <div key={i} style={{...S.row,...(i===proveedores.length-1?{borderBottom:'none'}:{})}}>
-                <span style={{fontSize:'12px',color:'#7a7876'}}>{p.nombre}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:'#ff5050'}}>{fmtS(p.deuda_actual)}</span>
+                <span style={{fontSize:'12px',color:C.label}}>{p.nombre}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmtS(p.deuda_actual)}</span>
               </div>
             ))}
           </div>
@@ -647,22 +679,22 @@ export default function Dashboard() {
             {historial.map((h,i)=>(
               <div key={i} style={{...S.row,...(i===historial.length-1?{borderBottom:'none'}:{})}}>
                 <div style={{flex:1}}>
-                  <span style={{fontSize:'11px',color:'#f5a623',fontWeight:600}}>{h.usuario_nombre} </span>
-                  <span style={{fontSize:'11px',color:'#7a7876'}}>{h.descripcion}</span>
+                  <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre} </span>
+                  <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
                 </div>
-                <span style={{fontSize:'9px',color:'#3a3a38',fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                <span style={{fontSize:'9px',color:C.muted,fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
               </div>
             ))}
-            {historial.length===0 && <p style={{fontSize:'12px',color:'#3a3a38',textAlign:'center',padding:'12px 0'}}>Sin historial</p>}
+            {historial.length===0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'12px 0'}}>Sin historial</p>}
           </div>
 
           <div style={S.sec}>Mi cuenta</div>
           <div style={S.card}>
-            <div style={S.row}><span style={{color:'#7a7876',fontSize:'12px'}}>Usuario</span><span style={{fontSize:'12px',fontFamily:'monospace',color:'#f5a623'}}>{usuario?.nombre}</span></div>
-            <div style={{...S.row,borderBottom:'none'}}><span style={{color:'#7a7876',fontSize:'12px'}}>Rol</span><span style={{fontSize:'11px',fontFamily:'monospace',background:'rgba(91,159,255,0.15)',color:'#5b9fff',padding:'2px 8px',borderRadius:'4px'}}>{usuario?.rol}</span></div>
+            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Usuario</span><span style={{fontSize:'12px',fontFamily:'monospace',color:C.accent}}>{usuario?.nombre}</span></div>
+            <div style={{...S.row,borderBottom:'none'}}><span style={{color:C.label,fontSize:'12px'}}>Rol</span><span style={{fontSize:'11px',fontFamily:'monospace',background:'rgba(91,159,255,0.15)',color:C.blue,padding:'2px 8px',borderRadius:'4px'}}>{usuario?.rol}</span></div>
           </div>
 
-          <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,80,80,0.3)',color:'#ff5050',marginTop:'8px'}} onClick={logout}>
+          <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,80,80,0.3)',color:C.red,marginTop:'8px'}} onClick={logout}>
             Cerrar sesión
           </button>
         </div>
@@ -671,8 +703,8 @@ export default function Dashboard() {
       {/* MODAL VENCIMIENTO */}
       {modal === 'venc' && (
         <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)setModal('')}}>
-          <div className="fomo-modal-inner" style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
-            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:'#eeecea'}}>Nuevo vencimiento</h3>
+          <div className="fomo-modal-inner" style={{background:C.card,borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
+            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:C.text}}>Nuevo vencimiento</h3>
             {[
               {label:'Fecha', type:'date', key:'fecha'},
               {label:'Descripción', type:'text', key:'descripcion', placeholder:'ej: Cheque MACRO'},
@@ -699,7 +731,7 @@ export default function Dashboard() {
               </select>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginTop:'8px'}}>
-              <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:'#7a7876'}} onClick={()=>setModal('')}>Cancelar</button>
+              <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModal('')}>Cancelar</button>
               <button style={S.btn} onClick={agregarVencimiento}>Agregar</button>
             </div>
           </div>
@@ -709,8 +741,8 @@ export default function Dashboard() {
       {/* MODAL DEUDA */}
       {modal === 'deuda' && (
         <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)setModal('')}}>
-          <div className="fomo-modal-inner" style={{background:'#141416',borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
-            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:'#eeecea'}}>Nueva deuda</h3>
+          <div className="fomo-modal-inner" style={{background:C.card,borderRadius:'16px 16px 0 0',padding:'20px 16px 36px',width:'100%',borderTop:'1px solid rgba(255,255,255,0.13)'}}>
+            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'14px',color:C.text}}>Nueva deuda</h3>
             {[
               {label:'Descripción', type:'text', key:'descripcion', placeholder:'ej: Tarjeta VISA Macro'},
               {label:'Monto ($)', type:'number', key:'monto', placeholder:'0'},
@@ -734,7 +766,7 @@ export default function Dashboard() {
               </select>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginTop:'8px'}}>
-              <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:'#7a7876'}} onClick={()=>setModal('')}>Cancelar</button>
+              <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModal('')}>Cancelar</button>
               <button style={S.btn} onClick={agregarDeuda}>Agregar</button>
             </div>
           </div>
@@ -742,11 +774,11 @@ export default function Dashboard() {
       )}
 
       {/* BOTTOM NAV (solo mobile) */}
-      <nav className="fomo-bottom-nav" style={{position:'fixed',bottom:0,left:0,right:0,background:'#141416',borderTop:'1px solid rgba(255,255,255,0.13)',zIndex:200}}>
+      <nav className="fomo-bottom-nav" style={{position:'fixed',bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.cardBorder}`,zIndex:200}}>
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)}
-            style={{flex:1,padding:'11px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',cursor:'pointer',fontSize:'9px',fontWeight:700,letterSpacing:'.06em',color:tab===n.id?'#f5a623':'#3a3a38',textTransform:'uppercase',border:'none',background:'none',fontFamily:"'Syne',sans-serif"}}>
-            <span style={{fontSize:'17px',lineHeight:1}}>{n.icon}</span>
+            style={{flex:1,padding:'12px 4px 10px',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',cursor:'pointer',fontSize:'10px',fontWeight:700,letterSpacing:'.05em',color:tab===n.id?C.accent:C.muted,textTransform:'uppercase',border:'none',background:'none',fontFamily:"'Syne',sans-serif",transition:'color .15s'}}>
+            <span style={{fontSize:'18px',lineHeight:1}}>{n.icon}</span>
             {n.label}
           </button>
         ))}
