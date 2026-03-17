@@ -57,8 +57,13 @@ export default function Dashboard() {
     const supabase = getSupabase()
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { window.location.href = '/login'; return }
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-      setUsuario(profile || { nombre: session.user.email, rol: 'admin' })
+      let { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+      if (!profile) {
+        const nombre = session.user.email.split('@')[0]
+        await supabase.from('profiles').upsert({ id: session.user.id, nombre, rol: 'admin' })
+        profile = { id: session.user.id, nombre, rol: 'admin' }
+      }
+      setUsuario(profile)
       setUserId(session.user.id)
       await loadAll(session.user.id)
       setLoading(false)
@@ -120,7 +125,10 @@ export default function Dashboard() {
       usuario_nombre: usuario?.nombre,
       updated_at: new Date().toISOString()
     }, { onConflict: 'fecha,usuario_id' })
-    if (!error) {
+    if (error) {
+      setMsg('❌ Error: ' + error.message)
+      setTimeout(() => setMsg(''), 5000)
+    } else {
       const esHoy = fechaCarga === hoyStr()
       await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
       setMsg('✓ Guardado')
