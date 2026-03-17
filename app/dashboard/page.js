@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
   const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock'})
+  const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [modal, setModal] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -142,6 +143,23 @@ export default function Dashboard() {
     setTimeout(() => setMsg(''), 2000)
   }
 
+  async function agregarCambio() {
+    if (!fCambio.monto_original || !fCambio.monto_recibido) return
+    const supabase = getSupabase()
+    const orig = parseFloat(fCambio.monto_original)
+    const recib = parseFloat(fCambio.monto_recibido)
+    const descuento = orig - recib
+    const tipos = {'cheque_efectivo':'Cheque → Efectivo','echeq_efectivo':'E-cheq → Efectivo','banco_efectivo':'Banco → Efectivo','efectivo_banco':'Efectivo → Banco','transferencia_efectivo':'Transferencia → Efectivo'}
+    const tipoLabel = tipos[fCambio.tipo] || fCambio.tipo
+    const desc = `Cambio: ${tipoLabel} | Original: ${fmt(orig)} | Recibido: ${fmt(recib)}${descuento > 0 ? ` | Descuento: ${fmt(descuento)}` : ''}${fCambio.descripcion ? ` — ${fCambio.descripcion}` : ''}`
+    await supabase.from('gastos').insert({descripcion: desc, monto: descuento > 0 ? descuento : 0, fecha: hoyStr(), categoria: 'cambio', usuario_nombre: usuario?.nombre})
+    await logH('INSERT', `Registró cambio: ${tipoLabel} ${fmt(orig)} → ${fmt(recib)}`)
+    setFCambio({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
+    await loadAll()
+    setMsg('✓ Cambio registrado')
+    setTimeout(() => setMsg(''), 2000)
+  }
+
   async function eliminarItem(tabla, id, desc) {
     if (!confirm(`¿Eliminar "${desc}"?`)) return
     const supabase = getSupabase()
@@ -174,8 +192,8 @@ export default function Dashboard() {
   const colorVentas = pctObj >= 100 ? '#3ddc84' : pctObj >= 70 ? '#f5a623' : '#ff5050'
 
   function tipoBadge(t) {
-    const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',otro:'#7a7876'}
-    const l = {cheque:'CHQ',echeq:'ECHEQ',banco:'BCO',impuesto:'AFIP',sueldo:'SUE',servicio:'SVC',tarjeta:'TRJ',proveedor:'PRV',personal:'CRED',stock:'STK',alquiler:'ALQ',mercaderia:'MERC',prestamo:'PREST',otro:'OTRO'}
+    const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',cambio:'#22d3ee',otro:'#7a7876'}
+    const l = {cheque:'CHQ',echeq:'ECHEQ',banco:'BCO',impuesto:'AFIP',sueldo:'SUE',servicio:'SVC',tarjeta:'TRJ',proveedor:'PRV',personal:'CRED',stock:'STK',alquiler:'ALQ',mercaderia:'MERC',prestamo:'PREST',cambio:'CAMBIO',otro:'OTRO'}
     return <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:(m[t]||'#7a7876')+'22',color:m[t]||'#7a7876'}}>{l[t]||t.toUpperCase()}</span>
   }
 
@@ -364,6 +382,41 @@ export default function Dashboard() {
             </div>
             <button style={{...S.btn,marginTop:'12px',background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:'#eeecea'}} onClick={agregarGasto}>
               + Registrar gasto
+            </button>
+          </div>
+
+          <div style={S.sec}>Registrar cambio de dinero</div>
+          <div style={S.card}>
+            <label style={S.label}>Tipo de cambio</label>
+            <select style={{...S.sel,marginBottom:'10px'}} value={fCambio.tipo} onChange={e=>setFCambio({...fCambio,tipo:e.target.value})}>
+              <option value="cheque_efectivo">Cheque → Efectivo</option>
+              <option value="echeq_efectivo">E-cheq → Efectivo</option>
+              <option value="banco_efectivo">Banco → Efectivo</option>
+              <option value="efectivo_banco">Efectivo → Banco</option>
+              <option value="transferencia_efectivo">Transferencia → Efectivo</option>
+            </select>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
+              <div>
+                <label style={S.label}>Valor original ($)</label>
+                <input type="number" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fCambio.monto_original} onChange={e=>setFCambio({...fCambio,monto_original:e.target.value})}/>
+              </div>
+              <div>
+                <label style={S.label}>Lo que recibís ($)</label>
+                <input type="number" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fCambio.monto_recibido} onChange={e=>setFCambio({...fCambio,monto_recibido:e.target.value})}/>
+              </div>
+            </div>
+            {fCambio.monto_original && fCambio.monto_recibido && parseFloat(fCambio.monto_original) > parseFloat(fCambio.monto_recibido) && (
+              <div style={{background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:'8px',padding:'9px 12px',marginBottom:'10px',fontSize:'12px',color:'#ff8080',fontFamily:'monospace'}}>
+                Descuento: {fmt(parseFloat(fCambio.monto_original) - parseFloat(fCambio.monto_recibido))} ({((1 - parseFloat(fCambio.monto_recibido)/parseFloat(fCambio.monto_original))*100).toFixed(1)}%)
+              </div>
+            )}
+            <label style={S.label}>Nota (opcional)</label>
+            <input type="text" style={{...S.inp,marginBottom:'10px'}} placeholder="ej: descuento con cambista"
+              value={fCambio.descripcion} onChange={e=>setFCambio({...fCambio,descripcion:e.target.value})}/>
+            <button style={{...S.btn,background:'transparent',border:'1px solid rgba(34,211,238,0.4)',color:'#22d3ee'}} onClick={agregarCambio}>
+              + Registrar cambio
             </button>
           </div>
 
