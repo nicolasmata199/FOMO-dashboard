@@ -1,6 +1,20 @@
 export const dynamic = 'force-dynamic'
 
-import { getSupabaseAdmin, enviarAlertaWhatsapp } from '../../../lib/supabase'
+import { getSupabaseAdmin } from '../../../lib/supabase'
+
+async function enviarWsp(mensaje) {
+  const apiKey = process.env.CALLMEBOT_API_KEY
+  const numero = process.env.WHATSAPP_NUMERO
+  if (!apiKey || !numero) return { ok: false, error: 'env vars faltantes' }
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${numero}&text=${encodeURIComponent(mensaje)}&apikey=${apiKey}`
+  try {
+    const res = await fetch(url)
+    const text = await res.text()
+    return { ok: res.ok, status: res.status, body: text.slice(0, 200) }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
 
 export async function GET() {
   try {
@@ -26,6 +40,7 @@ export async function GET() {
       .single()
 
     const alertas = []
+    const wspResults = []
 
     if (venc && venc.length > 0) {
       for (const v of venc) {
@@ -33,8 +48,9 @@ export async function GET() {
         const cuando = dias === 0 ? 'HOY' : dias === 1 ? 'MAÑANA' : `en ${dias} dias`
         const monto = '$' + Math.round(v.monto).toLocaleString('es-AR')
         const msg = `⚠️ FOMO: Vence ${cuando} - ${v.descripcion} - ${monto}`
-        await enviarAlertaWhatsapp(msg)
         alertas.push(msg)
+        const r = await enviarWsp(msg)
+        wspResults.push(r)
       }
     }
 
@@ -42,12 +58,13 @@ export async function GET() {
       const cajaTotal = (caja.efectivo || 0) + (caja.transferencias || 0) + (caja.saldo_banco || 0)
       if (cajaTotal < 1000000) {
         const msg = `🚨 FOMO: Caja baja - $${Math.round(cajaTotal).toLocaleString('es-AR')} disponible`
-        await enviarAlertaWhatsapp(msg)
         alertas.push(msg)
+        const r = await enviarWsp(msg)
+        wspResults.push(r)
       }
     }
 
-    return Response.json({ ok: true, alertas })
+    return Response.json({ ok: true, alertas, wspResults })
   } catch (e) {
     return Response.json({ ok: false, error: e.message })
   }
