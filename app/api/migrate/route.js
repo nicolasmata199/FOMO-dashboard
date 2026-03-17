@@ -1,25 +1,31 @@
 export const dynamic = 'force-dynamic'
 
-import { getSupabase, getSupabaseAdmin } from '../../../lib/supabase'
+import { getSupabaseAdmin } from '../../../lib/supabase'
 
 export async function GET() {
   try {
     const admin = getSupabaseAdmin()
-    const anon = getSupabase()
 
-    const [r1, r2, r3, r4] = await Promise.all([
-      admin.from('datos_diarios').select('id, fecha, usuario_nombre, efectivo').order('fecha', {ascending:false}).limit(5),
-      admin.from('profiles').select('id, nombre'),
-      anon.from('datos_diarios').select('id, fecha, usuario_nombre, efectivo').order('fecha', {ascending:false}).limit(5),
-      anon.from('profiles').select('id, nombre'),
-    ])
+    // Test insert para ver el error exacto
+    const { error: e1 } = await admin.from('datos_diarios').upsert({
+      fecha: '2099-01-01',
+      efectivo: 1,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'fecha' })
+
+    const { error: e2 } = await admin.from('datos_diarios').upsert({
+      fecha: '2099-01-02',
+      efectivo: 1,
+    }, { onConflict: 'fecha' })
+
+    // Limpiar test rows
+    await admin.from('datos_diarios').delete().in('fecha', ['2099-01-01','2099-01-02'])
 
     return Response.json({
-      admin: { datos_diarios: r1.data, datos_error: r1.error?.message, profiles: r2.data, profiles_error: r2.error?.message },
-      anon:  { datos_diarios: r3.data, datos_error: r3.error?.message, profiles: r4.data, profiles_error: r4.error?.message },
-      env: { url: !!process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey: !!process.env.SUPABASE_SERVICE_KEY, anonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY }
+      con_updated_at: e1 ? e1.message : 'OK',
+      sin_updated_at: e2 ? e2.message : 'OK',
     })
   } catch (e) {
-    return Response.json({ ok: false, error: e.message })
+    return Response.json({ error: e.message })
   }
 }
