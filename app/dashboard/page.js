@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [userId, setUserId] = useState(null)
   const [ventasMes, setVentasMes] = useState(0)
   const [diasConDatos, setDiasConDatos] = useState(0)
+  const [acumData, setAcumData] = useState({efectivo:0,transferencias:0,saldoBanco:0,gastos:0})
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -113,7 +114,7 @@ export default function Dashboard() {
     const currentUid = uid || userId
     const inicioMes = new Date(); inicioMes.setDate(1)
     const inicioMesStr = inicioMes.toISOString().split('T')[0]
-    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados] = await Promise.all([
+    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado',false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa',true).order('monto',{ascending:false}),
       supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
@@ -124,6 +125,8 @@ export default function Dashboard() {
       supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(10),
       supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
+      supabase.from('datos_diarios').select('efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()),
+      supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -133,6 +136,14 @@ export default function Dashboard() {
     if (h.data) setHistorial(h.data)
     if (ddReciente.data) setHistorialDias(ddReciente.data)
     if (vPagados.data) setVencPagados(vPagados.data)
+
+    // Cálculo de líquido acumulado
+    const rowsAcum = ddAcum.data || []
+    const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo>0?r.efectivo:0), 0)
+    const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias>0?r.transferencias:0), 0)
+    const saldoBancoUlt = rowsAcum.slice().sort((a,b)=>b.fecha>a.fecha?1:-1).find(r=>(r.saldo_banco||0)>0)?.saldo_banco || 0
+    const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
+    setAcumData({efectivo:efectivoAcum, transferencias:transferAcum, saldoBanco:saldoBancoUlt, gastos:totalGastosAcum})
 
     const rowsMes = ddMes.data || []
     const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
@@ -338,7 +349,7 @@ export default function Dashboard() {
   // Calculations
   const totalVentasDia = (datosDia.ventas_695||0) + (datosDia.ventas_642||0) + (datosDia.ventas_sanjuan||0)
   const ventasHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.cheque_recibido||0)
-  const liquidoHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.saldo_banco||0)
+  const liquidoHoy = acumData.efectivo + acumData.transferencias + acumData.saldoBanco - acumData.gastos
   const disponibleTotal = liquidoHoy + (datosHoy.tarjeta_pendiente||0)
   const v3 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 3 })
   const tv3 = v3.reduce((s,v) => s+v.monto, 0)
@@ -565,17 +576,18 @@ export default function Dashboard() {
           <div style={S.sec}>Posición de caja</div>
           <div style={S.card}>
             {[
-              {l:'Efectivo en caja', v:datosHoy.efectivo||0, c:'#3ddc84'},
-              {l:'Saldo banco', v:datosHoy.saldo_banco||0, c:'#3ddc84'},
-              {l:'Transferencias del día', v:datosHoy.transferencias||0, c:'#3ddc84'},
+              {l:'Efectivo acumulado', v:acumData.efectivo, c:'#3ddc84'},
+              {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
+              {l:'Saldo banco (último)', v:acumData.saldoBanco, c:'#3ddc84'},
+              {l:'Gastos registrados', v:-acumData.gastos, c:C.red},
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span>
               </div>
             ))}
             <div style={{...S.row,fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
-              <span>Total líquido</span>
+              <span>TOTAL LÍQUIDO</span>
               <span style={{fontFamily:'monospace',color:liquidoHoy>2e6?'#3ddc84':'#f5a623'}}>{fmt(liquidoHoy)}</span>
             </div>
             <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(tv15)}</span></div>
