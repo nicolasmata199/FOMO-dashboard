@@ -33,11 +33,16 @@ function fechaLabel() {
   return `${dias[d.getDay()]} ${d.getDate()} ${mes[d.getMonth()]}`
 }
 
+const FLUJO_FALLBACK = 937500
 function calcularEntradasProyectadas(historialDias) {
-  const conDatos = historialDias.filter(d => ((d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)) > 0)
-  if (conDatos.length === 0) return { promedio: 0, basadoEn: 0 }
-  const total = conDatos.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
-  return { promedio: Math.round(total / conDatos.length), basadoEn: conDatos.length }
+  // Excluir registros con ventas_sanjuan > 5M (son acumulados del mes, no ventas de un día)
+  const diarios = historialDias.filter(d => {
+    const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
+    return total > 0 && (d.ventas_sanjuan||0) <= 5000000
+  })
+  if (diarios.length === 0) return { promedio: FLUJO_FALLBACK, basadoEn: 0, fallback: true }
+  const total = diarios.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
+  return { promedio: Math.round(total / diarios.length), basadoEn: diarios.length, fallback: false }
 }
 
 export default function Dashboard() {
@@ -353,7 +358,7 @@ export default function Dashboard() {
   const diasDelMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
 
   // Flujo 30 días
-  const { promedio: promedioEntradas, basadoEn: diasPromedio } = calcularEntradasProyectadas(historialDias)
+  const { promedio: promedioEntradas, basadoEn: diasPromedio, fallback: flujFallback } = calcularEntradasProyectadas(historialDias)
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
   for (let i = 1; i <= 30; i++) {
@@ -1023,12 +1028,17 @@ export default function Dashboard() {
               </div>
               <div style={{textAlign:'right'}}>
                 <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Promedio diario</div>
-                <div style={{fontFamily:'monospace',fontSize:'15px',color:C.green}}>{fmt(promedioEntradas)}</div>
-                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>basado en {diasPromedio} días</div>
+                <div style={{fontFamily:'monospace',fontSize:'15px',color:flujFallback?C.accent:C.green}}>{fmt(promedioEntradas)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{flujFallback ? 'estimado por defecto' : `basado en ${diasPromedio} días`}</div>
               </div>
             </div>
           </div>
 
+          {flujFallback && (
+            <div style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'11px 14px',marginBottom:'14px',fontSize:'12px',color:C.accent,fontFamily:'monospace',lineHeight:1.6}}>
+              ⚠ Datos históricos insuficientes — ingresá ventas diarias para mejorar la proyección. Usando {fmt(FLUJO_FALLBACK)} como estimado.
+            </div>
+          )}
           <div style={{overflowX:'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'DM Mono,monospace',fontSize:'12px'}}>
               <thead>
