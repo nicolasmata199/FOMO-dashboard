@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [ventasMes, setVentasMes] = useState(0)
   const [diasConDatos, setDiasConDatos] = useState(0)
   const [acumData, setAcumData] = useState({efectivo:0,transferencias:0,saldoBanco:0,gastos:0})
+  const [liquidoTotal, setLiquidoTotal] = useState(0)
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -146,11 +147,14 @@ export default function Dashboard() {
     // saldo_banco: ya viene ordenado por fecha desc, tomar el primero con valor > 0
     const saldoBancoUlt = rowsAcum.find(r=>(r.saldo_banco||0)>0)?.saldo_banco || 0
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
+    const totalLiquido = efectivoAcum + transferAcum + saldoBancoUlt - totalGastosAcum
     console.log('[FOMO] efectivo_acum:', efectivoAcum)
     console.log('[FOMO] transf_acum:', transferAcum)
     console.log('[FOMO] banco:', saldoBancoUlt)
     console.log('[FOMO] gastos:', totalGastosAcum)
+    console.log('[FOMO] totalLiquido:', totalLiquido)
     setAcumData({efectivo:efectivoAcum, transferencias:transferAcum, saldoBanco:saldoBancoUlt, gastos:totalGastosAcum})
+    setLiquidoTotal(totalLiquido)
 
     const rowsMes = ddMes.data || []
     const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
@@ -356,7 +360,7 @@ export default function Dashboard() {
   // Calculations
   const totalVentasDia = (datosDia.ventas_695||0) + (datosDia.ventas_642||0) + (datosDia.ventas_sanjuan||0)
   const ventasHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.cheque_recibido||0)
-  const liquidoHoy = acumData.efectivo + acumData.transferencias + acumData.saldoBanco - acumData.gastos
+  const liquidoHoy = liquidoTotal  // estado directo — no derivado de acumData para evitar renders con snapshot viejo
   const disponibleTotal = liquidoHoy + (datosHoy.tarjeta_pendiente||0)
   const v3 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 3 })
   const tv3 = v3.reduce((s,v) => s+v.monto, 0)
