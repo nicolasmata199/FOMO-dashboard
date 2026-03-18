@@ -33,7 +33,7 @@ function fechaLabel() {
   return `${dias[d.getDay()]} ${d.getDate()} ${mes[d.getMonth()]}`
 }
 
-const FLUJO_FALLBACK = 937500
+const FLUJO_FALLBACK = 500000
 function calcularEntradasProyectadas(historialDias) {
   // Excluir registros con ventas_sanjuan > 5M (son acumulados del mes, no ventas de un día)
   const diarios = historialDias.filter(d => {
