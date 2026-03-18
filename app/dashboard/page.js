@@ -125,7 +125,7 @@ export default function Dashboard() {
       supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(10),
       supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
-      supabase.from('datos_diarios').select('efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()),
+      supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
     ])
     if (v.data) setVencimientos(v.data)
@@ -139,10 +139,17 @@ export default function Dashboard() {
 
     // Cálculo de líquido acumulado
     const rowsAcum = ddAcum.data || []
+    console.log('[FOMO] ddAcum rows:', rowsAcum.length, ddAcum.error?.message)
+    console.log('[FOMO] ddAcum data:', JSON.stringify(rowsAcum))
     const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo>0?r.efectivo:0), 0)
     const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias>0?r.transferencias:0), 0)
-    const saldoBancoUlt = rowsAcum.slice().sort((a,b)=>b.fecha>a.fecha?1:-1).find(r=>(r.saldo_banco||0)>0)?.saldo_banco || 0
+    // saldo_banco: ya viene ordenado por fecha desc, tomar el primero con valor > 0
+    const saldoBancoUlt = rowsAcum.find(r=>(r.saldo_banco||0)>0)?.saldo_banco || 0
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
+    console.log('[FOMO] efectivo_acum:', efectivoAcum)
+    console.log('[FOMO] transf_acum:', transferAcum)
+    console.log('[FOMO] banco:', saldoBancoUlt)
+    console.log('[FOMO] gastos:', totalGastosAcum)
     setAcumData({efectivo:efectivoAcum, transferencias:transferAcum, saldoBanco:saldoBancoUlt, gastos:totalGastosAcum})
 
     const rowsMes = ddMes.data || []
