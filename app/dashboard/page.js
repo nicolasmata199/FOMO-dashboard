@@ -507,9 +507,10 @@ export default function Dashboard() {
         .fomo-main { width: 100%; }
         .fomo-bottom-nav { display: flex; }
         .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
-        .fomo-metric-value { font-size: 22px; }
-        .fomo-metric-value.small { font-size: 16px; }
-        .fomo-metric-label { font-size: 10px; }
+        .fomo-metric-card { min-height: 118px; padding: 18px 14px 14px; position: relative; overflow: hidden; box-sizing: border-box; }
+        .fomo-metric-value { font-size: clamp(16px, 4.5vw, 24px); line-height: 1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fomo-metric-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+        .fomo-metric-sub { font-size: 11px; margin-top: 6px; font-family: 'DM Mono', monospace; }
         @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
         .venc-urgente { animation: pulse-urgente 1.5s ease-in-out infinite; background: rgba(220,38,38,0.15) !important; }
         @media (min-width: 900px) {
@@ -534,9 +535,10 @@ export default function Dashboard() {
           .fomo-content { max-width: 760px; margin: 0 auto; padding: 28px 40px 60px !important; }
           .fomo-bottom-nav { display: none !important; }
           .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
-          .fomo-metric-value { font-size: 28px !important; }
-          .fomo-metric-value.small { font-size: 20px !important; }
+          .fomo-metric-card { min-height: 128px !important; padding: 20px 16px 16px !important; }
+          .fomo-metric-value { font-size: clamp(18px, 1.8vw, 28px) !important; }
           .fomo-metric-label { font-size: 11px !important; }
+          .fomo-metric-sub { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
           .fomo-modal-wrap { align-items: center !important; }
           .fomo-sidebar-user { margin-top: auto; padding: 20px 28px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 12px; color: #8b9099; font-family: monospace; line-height: 1.6; }
@@ -623,11 +625,11 @@ export default function Dashboard() {
               {label:'VENCE 7 DÍAS',val:fmt(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
               {label:'MES ACTUAL',val:fmt(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
-              <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px',minHeight:'110px'}}>
+              <div key={i} className="fomo-metric-card" style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',marginBottom:0}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
-                <div className="fomo-metric-label" style={{color:C.label,marginBottom:'8px',fontWeight:700,letterSpacing:'.06em',textTransform:'uppercase'}}>{k.label}</div>
-                <div className={`fomo-metric-value${k.val.length>10?' small':''}`} style={{fontWeight:800,fontFamily:'DM Mono,monospace',letterSpacing:'-1px',color:k.color,lineHeight:1}}>{k.val}</div>
-                <div style={{fontSize:'11px',color:C.muted,marginTop:'6px',fontFamily:'DM Mono,monospace'}}>{k.sub}</div>
+                <div className="fomo-metric-label" style={{color:C.label}}>{k.label}</div>
+                <div className="fomo-metric-value" style={{color:k.color}}>{k.val}</div>
+                <div className="fomo-metric-sub" style={{color:C.muted}}>{k.sub}</div>
                 {k.prog > 0 && <div style={{background:C.inputBg,borderRadius:'4px',height:'4px',marginTop:'10px',overflow:'hidden'}}><div style={{height:'100%',borderRadius:'4px',background:k.color,width:k.prog+'%',transition:'width .4s'}}/></div>}
               </div>
             ))}
