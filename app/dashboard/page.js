@@ -92,12 +92,11 @@ export default function Dashboard() {
     if (p.data) setProveedores(p.data)
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
-    if (ddAll.data) {
+    if (ddAll.data && ddAll.data.length > 0) {
       setDatosHoyPorUsuario(ddAll.data)
       const miRow = ddAll.data.find(r => r.usuario_id === currentUid)
         || ddAll.data.find(r => !r.usuario_id)
       if (miRow) setDatosDia(miRow)
-      else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
     }
   }
 
@@ -135,8 +134,7 @@ export default function Dashboard() {
     } else {
       const esHoy = fechaCarga === hoyStr()
       await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
-      await loadAll()
-      if (fechaCarga === hoyStr()) {
+      if (esHoy) {
         const savedRow = {...datosDia, fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre}
         setDatosHoyPorUsuario(prev => {
           const idx = prev.findIndex(r => r.usuario_id === userId)
@@ -144,6 +142,7 @@ export default function Dashboard() {
           return [...prev, savedRow]
         })
       }
+      await loadAll()
       setMsg('✓ Guardado')
       setTimeout(() => setMsg(''), 2000)
     }
@@ -219,7 +218,8 @@ export default function Dashboard() {
     window.location.href = '/login'
   }
 
-  const agg = datosHoyPorUsuario.reduce((acc, r) => ({
+  const datosParaAgg = datosHoyPorUsuario.length > 0 ? datosHoyPorUsuario : [datosDia]
+  const agg = datosParaAgg.reduce((acc, r) => ({
     efectivo: acc.efectivo + (r.efectivo || 0),
     transferencias: acc.transferencias + (r.transferencias || 0),
     tarjeta_pendiente: acc.tarjeta_pendiente + (r.tarjeta_pendiente || 0),
