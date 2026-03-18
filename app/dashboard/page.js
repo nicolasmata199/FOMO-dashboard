@@ -38,7 +38,11 @@ export default function Dashboard() {
   const [tab, setTab] = useState('hoy')
   const [loading, setLoading] = useState(true)
 
-  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:15000000,notas:''})
+  // datosHoy = datos para mostrar en HOY (el día más reciente disponible)
+  const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+  const [fechaDatosHoy, setFechaDatosHoy] = useState(null)
+  // datosDia = datos del formulario en CARGAR (independiente de HOY)
+  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
   const [vencimientos, setVencimientos] = useState([])
   const [deudas, setDeudas] = useState([])
   const [gastos, setGastos] = useState([])
@@ -46,7 +50,6 @@ export default function Dashboard() {
   const [stock, setStock] = useState([])
   const [historial, setHistorial] = useState([])
   const [userId, setUserId] = useState(null)
-  const [datosHoyPorUsuario, setDatosHoyPorUsuario] = useState([])
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -56,7 +59,6 @@ export default function Dashboard() {
   const [modal, setModal] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [fechaUltimoDato, setFechaUltimoDato] = useState(null)
 
   useEffect(() => {
     const supabase = getSupabase()
@@ -78,15 +80,15 @@ export default function Dashboard() {
   async function loadAll(uid) {
     const supabase = getSupabase()
     const currentUid = uid || userId
-    const [v, d, g, p, s, h, ddHoy, ddUltimo] = await Promise.all([
+    const [v, d, g, p, s, h, ddHoy, ddReciente] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado', false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa', true).order('monto', {ascending:false}),
       supabase.from('gastos').select('*').eq('fecha', hoyStr()).order('created_at', {ascending:false}),
       supabase.from('proveedores').select('*').order('deuda_actual', {ascending:false}),
       supabase.from('stock').select('*').order('categoria'),
       supabase.from('historial').select('*').order('created_at', {ascending:false}).limit(20),
-      supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()).order('created_at'),
-      supabase.from('datos_diarios').select('*').order('fecha', {ascending:false}).limit(5),
+      supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()),
+      supabase.from('datos_diarios').select('*').order('fecha', {ascending:false}).limit(10),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -94,19 +96,22 @@ export default function Dashboard() {
     if (p.data) setProveedores(p.data)
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
-    if (ddHoy.data && ddHoy.data.length > 0) {
-      setDatosHoyPorUsuario(ddHoy.data)
-      const miRow = ddHoy.data.find(r => r.usuario_id === currentUid) || ddHoy.data.find(r => !r.usuario_id)
-      if (miRow) setDatosDia(miRow)
-    } else if (ddUltimo.data && ddUltimo.data.length > 0) {
-      // No hay datos de hoy — cargar el último día disponible como referencia
-      const miRow = ddUltimo.data.find(r => r.usuario_id === currentUid) || ddUltimo.data[0]
-      if (miRow) {
-        setDatosHoyPorUsuario([miRow])
-        setDatosDia(miRow)
-        setFechaUltimoDato(miRow.fecha)
-      }
+
+    // HOY: usar datos de hoy si existen, sino el más reciente
+    const rowsHoy = ddHoy.data || []
+    const rowsRecientes = ddReciente.data || []
+    if (rowsHoy.length > 0) {
+      const r = rowsHoy.find(x => x.usuario_id === currentUid) || rowsHoy[0]
+      setDatosHoy(r)
+      setFechaDatosHoy(hoyStr())
+    } else if (rowsRecientes.length > 0) {
+      const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
+      setDatosHoy(r)
+      setFechaDatosHoy(r.fecha)
     }
+
+    // CARGAR: cargar datos del día seleccionado en fechaCarga (sin tocar datosHoy)
+    // Se maneja en cargarFecha() y en el save
   }
 
   async function logH(accion, descripcion) {
@@ -131,8 +136,11 @@ export default function Dashboard() {
   async function guardarDatos() {
     setSaving(true)
     const supabase = getSupabase()
+    // Nunca incluir id ni created_at para evitar actualizar el registro equivocado
+    const { id: _id, created_at: _ca, ...datosSinMeta } = datosDia
     const { error } = await supabase.from('datos_diarios').upsert({
-      ...datosDia, fecha: fechaCarga,
+      ...datosSinMeta,
+      fecha: fechaCarga,
       usuario_id: userId,
       usuario_nombre: usuario?.nombre,
       updated_at: new Date().toISOString()
@@ -142,15 +150,12 @@ export default function Dashboard() {
       setTimeout(() => setMsg(''), 5000)
     } else {
       const esHoy = fechaCarga === hoyStr()
-      await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
-      if (esHoy) {
-        const savedRow = {...datosDia, fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre}
-        setDatosHoyPorUsuario(prev => {
-          const idx = prev.findIndex(r => r.usuario_id === userId)
-          if (idx >= 0) { const u = [...prev]; u[idx] = savedRow; return u }
-          return [...prev, savedRow]
-        })
-        setFechaUltimoDato(null)
+      await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga}`)
+      // Actualizar datosHoy inmediatamente si es el día más reciente
+      const savedRow = {...datosSinMeta, fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre}
+      if (esHoy || !fechaDatosHoy || fechaCarga >= fechaDatosHoy) {
+        setDatosHoy(savedRow)
+        setFechaDatosHoy(fechaCarga)
       }
       await loadAll()
       setMsg('✓ Guardado')
@@ -228,26 +233,17 @@ export default function Dashboard() {
     window.location.href = '/login'
   }
 
-  const datosParaAgg = datosHoyPorUsuario.length > 0 ? datosHoyPorUsuario : [datosDia]
-  const agg = datosParaAgg.reduce((acc, r) => ({
-    efectivo: acc.efectivo + (r.efectivo || 0),
-    transferencias: acc.transferencias + (r.transferencias || 0),
-    tarjeta_pendiente: acc.tarjeta_pendiente + (r.tarjeta_pendiente || 0),
-    cheque_recibido: acc.cheque_recibido + (r.cheque_recibido || 0),
-    saldo_banco: acc.saldo_banco + (r.saldo_banco || 0),
-    ventas_acumuladas_mes: Math.max(acc.ventas_acumuladas_mes, r.ventas_acumuladas_mes || 0),
-  }), {efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0})
-  const ventasHoy = agg.efectivo + agg.transferencias + agg.cheque_recibido
-  const cajaTotal = agg.efectivo + agg.saldo_banco
-  const disponibleTotal = cajaTotal + agg.tarjeta_pendiente + agg.transferencias
+  const ventasHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.cheque_recibido||0)
+  const cajaTotal = (datosHoy.efectivo||0) + (datosHoy.saldo_banco||0)
+  const disponibleTotal = cajaTotal + (datosHoy.tarjeta_pendiente||0) + (datosHoy.transferencias||0)
   const v7 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 7 })
   const tv7 = v7.reduce((s, v) => s + v.monto, 0)
   const v15 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 15 })
   const tv15 = v15.reduce((s, v) => s + v.monto, 0)
   const posNeta = disponibleTotal - tv15
   const pctObj = ventasHoy > 0 ? Math.min(100, Math.round(ventasHoy / OBJ_DIA * 100)) : 0
-  const cmv = agg.ventas_acumuladas_mes * CMV_R
-  const mb = agg.ventas_acumuladas_mes - cmv
+  const cmv = (datosHoy.ventas_acumuladas_mes||0) * CMV_R
+  const mb = (datosHoy.ventas_acumuladas_mes||0) - cmv
   const neto = mb - FIJOS
   const stockValor = stock.reduce((s, i) => s + (i.cantidad * i.costo_unitario), 0)
   const totalDeudas = deudas.reduce((s, d) => s + d.monto, 0)
@@ -403,9 +399,9 @@ export default function Dashboard() {
       {/* ALERTAS */}
       {tab === 'hoy' && (
         <div style={{padding:'12px 16px 0'}}>
-          {fechaUltimoDato && fechaUltimoDato !== hoyStr() && (
+          {fechaDatosHoy && fechaDatosHoy !== hoyStr() && (
             <div style={{background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:C.blue,marginBottom:'10px',fontWeight:500}}>
-              📅 Mostrando último dato cargado: <strong>{fechaUltimoDato.split('-').reverse().join('/')}</strong> — Todavía no cargaste datos de hoy.
+              📅 Último dato: <strong>{fechaDatosHoy.split('-').reverse().join('/')}</strong> — Todavía no cargaste datos de hoy.
             </div>
           )}
           {vencimientos.filter(v => diasHasta(v.fecha) === 0).length > 0 && (
@@ -429,7 +425,7 @@ export default function Dashboard() {
               {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
               {label:'CAJA TOTAL',val:fmtS(cajaTotal),color:colorCaja,sub:'efectivo + banco',prog:0},
               {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmtS(agg.ventas_acumuladas_mes),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
+              {label:'MES ACTUAL',val:fmtS(datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
               <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
@@ -444,10 +440,10 @@ export default function Dashboard() {
           <div style={S.sec}>Detalle de cobros de hoy</div>
           <div style={S.card}>
             {[
-              {label:'Efectivo', val:agg.efectivo},
-              {label:'Transferencias', val:agg.transferencias},
-              {label:'Cheques / E-cheq recibidos', val:agg.cheque_recibido},
-              {label:'Tarjeta (pendiente acred.)', val:agg.tarjeta_pendiente, color:C.accent},
+              {label:'Efectivo', val:datosHoy.efectivo||0},
+              {label:'Transferencias', val:datosHoy.transferencias||0},
+              {label:'Cheques / E-cheq recibidos', val:datosHoy.cheque_recibido||0},
+              {label:'Tarjeta (pendiente acred.)', val:datosHoy.tarjeta_pendiente||0, color:C.accent},
             ].map((r,i) => (
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
                 <span style={{color:C.label}}>{r.label}</span>
@@ -463,10 +459,10 @@ export default function Dashboard() {
           <div style={S.sec}>Posición de caja</div>
           <div style={S.card}>
             {[
-              {l:'Efectivo en caja', v:agg.efectivo, c:'#3ddc84'},
-              {l:'Saldo banco', v:agg.saldo_banco, c:'#3ddc84'},
-              {l:'Transferencias del día', v:agg.transferencias, c:'#3ddc84'},
-              {l:'Tarjeta pendiente acreditación', v:agg.tarjeta_pendiente, c:'#f5a623'},
+              {l:'Efectivo en caja', v:datosHoy.efectivo||0, c:'#3ddc84'},
+              {l:'Saldo banco', v:datosHoy.saldo_banco||0, c:'#3ddc84'},
+              {l:'Transferencias del día', v:datosHoy.transferencias||0, c:'#3ddc84'},
+              {l:'Tarjeta pendiente acreditación', v:datosHoy.tarjeta_pendiente||0, c:'#f5a623'},
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
@@ -483,28 +479,6 @@ export default function Dashboard() {
               <span style={{fontFamily:'monospace',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
             </div>
           </div>
-
-          {datosHoyPorUsuario.length > 1 && (
-            <>
-              <div style={S.sec}>Carga por usuario — hoy</div>
-              <div style={S.card}>
-                {datosHoyPorUsuario.map((r, i) => (
-                  <div key={i} style={{...S.row,...(i===datosHoyPorUsuario.length-1?{borderBottom:'none'}:{})}}>
-                    <div>
-                      <span style={{fontSize:'12px',fontWeight:700,color:r.usuario_id===userId?C.accent:C.text}}>{r.usuario_nombre||'—'}</span>
-                      {r.usuario_id===userId && <span style={{fontSize:'10px',color:C.muted,marginLeft:'6px'}}>(vos)</span>}
-                      <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',marginTop:'2px'}}>
-                        Efec: {fmt(r.efectivo||0)} · Trans: {fmt(r.transferencias||0)} · Banco: {fmt(r.saldo_banco||0)}
-                      </div>
-                    </div>
-                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.green}}>
-                      {fmt((r.efectivo||0)+(r.transferencias||0)+(r.cheque_recibido||0))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
 
           <div style={S.sec}>Últimos cambios del equipo</div>
           <div style={S.card}>
@@ -728,7 +702,7 @@ export default function Dashboard() {
           <div style={S.sec}>P&L del mes — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
           <div style={S.card}>
             {[
-              {l:'Ventas acumuladas', v:agg.ventas_acumuladas_mes, c:'#3ddc84'},
+              {l:'Ventas acumuladas', v:datosHoy.ventas_acumuladas_mes||0, c:'#3ddc84'},
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
             ].map((r,i)=>(
               <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
