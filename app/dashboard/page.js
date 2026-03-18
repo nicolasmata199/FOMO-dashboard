@@ -508,7 +508,7 @@ export default function Dashboard() {
         .fomo-bottom-nav { display: flex; }
         .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
         .fomo-metric-card { min-height: 118px; padding: 18px 14px 14px; position: relative; overflow: hidden; box-sizing: border-box; }
-        .fomo-metric-value { font-size: clamp(16px, 4.5vw, 24px); line-height: 1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fomo-metric-value { font-size: clamp(16px, 2.5vw, 28px); line-height: 1.1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; }
         .fomo-metric-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
         .fomo-metric-sub { font-size: 11px; margin-top: 6px; font-family: 'DM Mono', monospace; }
         @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
@@ -536,7 +536,7 @@ export default function Dashboard() {
           .fomo-bottom-nav { display: none !important; }
           .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
           .fomo-metric-card { min-height: 128px !important; padding: 20px 16px 16px !important; }
-          .fomo-metric-value { font-size: clamp(18px, 1.8vw, 28px) !important; }
+          .fomo-metric-value { font-size: clamp(16px, 2.5vw, 28px) !important; }
           .fomo-metric-label { font-size: 11px !important; }
           .fomo-metric-sub { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
