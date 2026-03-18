@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getSupabase } from '../../lib/supabase'
 
 const OBJ_DIA = 937500
@@ -33,32 +33,48 @@ function fechaLabel() {
   return `${dias[d.getDay()]} ${d.getDate()} ${mes[d.getMonth()]}`
 }
 
+function calcularEntradasProyectadas(historialDias) {
+  const conDatos = historialDias.filter(d => ((d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)) > 0)
+  if (conDatos.length === 0) return { promedio: 0, basadoEn: 0 }
+  const total = conDatos.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
+  return { promedio: Math.round(total / conDatos.length), basadoEn: conDatos.length }
+}
+
 export default function Dashboard() {
   const [usuario, setUsuario] = useState(null)
   const [tab, setTab] = useState('hoy')
   const [loading, setLoading] = useState(true)
 
-  // datosHoy = datos para mostrar en HOY (el día más reciente disponible)
-  const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+  const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:'',tarjeta_acreditada:false,tarjeta_monto_real:0})
   const [fechaDatosHoy, setFechaDatosHoy] = useState(null)
-  // datosDia = datos del formulario en CARGAR (independiente de HOY)
-  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:''})
   const [vencimientos, setVencimientos] = useState([])
+  const [vencPagados, setVencPagados] = useState([])
   const [deudas, setDeudas] = useState([])
   const [gastos, setGastos] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [stock, setStock] = useState([])
   const [historial, setHistorial] = useState([])
+  const [historialDias, setHistorialDias] = useState([])
   const [userId, setUserId] = useState(null)
+  const [ventasMes, setVentasMes] = useState(0)
+  const [diasConDatos, setDiasConDatos] = useState(0)
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
   const [fechaCarga, setFechaCarga] = useState(hoyStr())
   const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock'})
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
+  const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
   const [modal, setModal] = useState('')
+  const [modalPago, setModalPago] = useState({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})
+  const [tarjetaInputShow, setTarjetaInputShow] = useState(false)
+  const [tarjetaMontoInput, setTarjetaMontoInput] = useState('')
+  const [mostrarPagados, setMostrarPagados] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+
+  const lastSaveRef = useRef(0)
 
   useEffect(() => {
     const supabase = getSupabase()
@@ -72,6 +88,16 @@ export default function Dashboard() {
       }
       setUsuario(profile)
       setUserId(session.user.id)
+      // Verificar Santander (una sola vez al cargar)
+      const santItems = [
+        {descripcion:'Cuota Santander 6/12',fecha:'2026-03-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 7/12 (última)',fecha:'2026-04-01',monto:1788634,tipo:'banco'},
+      ]
+      const {data: santExist} = await supabase.from('vencimientos').select('descripcion,fecha').in('descripcion', santItems.map(s=>s.descripcion))
+      for (const s of santItems) {
+        const existe = santExist?.some(e => e.descripcion === s.descripcion && e.fecha === s.fecha)
+        if (!existe) await supabase.from('vencimientos').insert({...s, pagado:false, usuario_nombre:'sistema'})
+      }
       await loadAll(session.user.id)
       setLoading(false)
     })
@@ -80,15 +106,19 @@ export default function Dashboard() {
   async function loadAll(uid) {
     const supabase = getSupabase()
     const currentUid = uid || userId
-    const [v, d, g, p, s, h, ddHoy, ddReciente] = await Promise.all([
-      supabase.from('vencimientos').select('*').eq('pagado', false).order('fecha'),
-      supabase.from('deudas').select('*').eq('activa', true).order('monto', {ascending:false}),
-      supabase.from('gastos').select('*').eq('fecha', hoyStr()).order('created_at', {ascending:false}),
-      supabase.from('proveedores').select('*').order('deuda_actual', {ascending:false}),
+    const inicioMes = new Date(); inicioMes.setDate(1)
+    const inicioMesStr = inicioMes.toISOString().split('T')[0]
+    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados] = await Promise.all([
+      supabase.from('vencimientos').select('*').eq('pagado',false).order('fecha'),
+      supabase.from('deudas').select('*').eq('activa',true).order('monto',{ascending:false}),
+      supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
+      supabase.from('proveedores').select('*').order('deuda_actual',{ascending:false}),
       supabase.from('stock').select('*').order('categoria'),
-      supabase.from('historial').select('*').order('created_at', {ascending:false}).limit(20),
-      supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()),
-      supabase.from('datos_diarios').select('*').order('fecha', {ascending:false}).limit(10),
+      supabase.from('historial').select('*').order('created_at',{ascending:false}).limit(20),
+      supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()),
+      supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(10),
+      supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
+      supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -96,11 +126,17 @@ export default function Dashboard() {
     if (p.data) setProveedores(p.data)
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
+    if (ddReciente.data) setHistorialDias(ddReciente.data)
+    if (vPagados.data) setVencPagados(vPagados.data)
 
-    // HOY: usar datos de hoy si existen, sino el más reciente
+    const rowsMes = ddMes.data || []
+    const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
+    setVentasMes(totalVentasMes)
+    const diasCon = rowsMes.filter(r => ((r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)) > 0).length
+    setDiasConDatos(diasCon)
+
     const rowsHoy = ddHoy.data || []
     const rowsRecientes = ddReciente.data || []
-    // ventas_acumuladas_mes: usar el valor más reciente no-cero si el row elegido tiene 0
     const mejorVentas = rowsRecientes.find(x => (x.ventas_acumuladas_mes||0) > 0)?.ventas_acumuladas_mes || 0
     if (rowsHoy.length > 0) {
       const r = rowsHoy.find(x => x.usuario_id === currentUid) || rowsHoy[0]
@@ -113,82 +149,125 @@ export default function Dashboard() {
       setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       setFechaDatosHoy(r.fecha)
     }
-
-    // CARGAR: cargar datos del día seleccionado en fechaCarga (sin tocar datosHoy)
-    // Se maneja en cargarFecha() y en el save
   }
 
   async function logH(accion, descripcion) {
     const supabase = getSupabase()
-    await supabase.from('historial').insert({
-      tabla: 'general', accion, descripcion,
-      usuario_nombre: usuario?.nombre || 'usuario'
-    })
+    await supabase.from('historial').insert({tabla:'general', accion, descripcion, usuario_nombre: usuario?.nombre || 'usuario'})
   }
 
   async function cargarFecha(fecha) {
     const supabase = getSupabase()
-    const { data: conId } = await supabase.from('datos_diarios').select('*').eq('fecha', fecha).eq('usuario_id', userId).single()
-    const { data: sinId } = !conId ? await supabase.from('datos_diarios').select('*').eq('fecha', fecha).is('usuario_id', null).single() : { data: null }
-    const { data: gas } = await supabase.from('gastos').select('*').eq('fecha', fecha).order('created_at', {ascending:false})
+    const {data: conId} = await supabase.from('datos_diarios').select('*').eq('fecha',fecha).eq('usuario_id',userId).single()
+    const {data: sinId} = !conId ? await supabase.from('datos_diarios').select('*').eq('fecha',fecha).is('usuario_id',null).single() : {data:null}
+    const {data: gas} = await supabase.from('gastos').select('*').eq('fecha',fecha).order('created_at',{ascending:false})
     const data = conId || sinId
     if (data) setDatosDia(data)
-    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,notas:''})
+    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:''})
     if (gas) setGastos(gas)
   }
 
   async function guardarDatos() {
-    setSaving(true)
-    const supabase = getSupabase()
-    // Nunca incluir id ni created_at para evitar actualizar el registro equivocado
-    const { id: _id, created_at: _ca, ...datosSinMeta } = datosDia
-    const { error } = await supabase.from('datos_diarios').upsert({
-      ...datosSinMeta,
-      fecha: fechaCarga,
-      usuario_id: userId,
-      usuario_nombre: usuario?.nombre,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'fecha,usuario_id' })
-    if (error) {
-      setMsg('❌ Error: ' + error.message)
-      setTimeout(() => setMsg(''), 5000)
-    } else {
-      const esHoy = fechaCarga === hoyStr()
-      await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga}`)
-      // Actualizar datosHoy inmediatamente si es el día más reciente
-      const savedRow = {...datosSinMeta, fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre}
-      if (esHoy || !fechaDatosHoy || fechaCarga >= fechaDatosHoy) {
-        setDatosHoy(savedRow)
-        setFechaDatosHoy(fechaCarga)
-      }
-      await loadAll()
-      setMsg('✓ Guardado')
-      setTimeout(() => setMsg(''), 2000)
+    if (saving) return
+    const ahora = Date.now()
+    if (ahora - lastSaveRef.current < 3000) {
+      setMsg('Ya guardado recientemente')
+      setTimeout(()=>setMsg(''),2000)
+      return
     }
-    setSaving(false)
+    setSaving(true)
+    setTimeout(async () => {
+      try {
+        lastSaveRef.current = Date.now()
+        const supabase = getSupabase()
+        const {id:_id, created_at:_ca, ...datosSinMeta} = datosDia
+        const {error} = await supabase.from('datos_diarios').upsert({
+          ...datosSinMeta, fecha:fechaCarga, usuario_id:userId, usuario_nombre:usuario?.nombre, updated_at:new Date().toISOString()
+        }, {onConflict:'fecha,usuario_id'})
+        if (error) {
+          setMsg('❌ Error: ' + error.message)
+          setTimeout(()=>setMsg(''),5000)
+        } else {
+          const esHoy = fechaCarga === hoyStr()
+          await logH(esHoy?'UPDATE':'EDIT', `${esHoy?'Actualizó':'Modificó'} datos del ${fechaCarga}`)
+          const savedRow = {...datosSinMeta, fecha:fechaCarga, usuario_id:userId, usuario_nombre:usuario?.nombre}
+          if (esHoy || !fechaDatosHoy || fechaCarga >= fechaDatosHoy) {
+            setDatosHoy(savedRow)
+            setFechaDatosHoy(fechaCarga)
+          }
+          await loadAll()
+          setMsg('✓ Guardado')
+          setTimeout(()=>setMsg(''),2000)
+        }
+      } finally {
+        setSaving(false)
+      }
+    }, 1500)
   }
 
   async function agregarVencimiento() {
     if (!fVenc.fecha || !fVenc.descripcion || !fVenc.monto) return
     const supabase = getSupabase()
-    await supabase.from('vencimientos').insert({...fVenc, monto: parseFloat(fVenc.monto), usuario_nombre: usuario?.nombre})
+    await supabase.from('vencimientos').insert({...fVenc, monto:parseFloat(fVenc.monto), usuario_nombre:usuario?.nombre})
     await logH('INSERT', `Agregó vencimiento: ${fVenc.descripcion} — ${fmt(parseFloat(fVenc.monto))}`)
     setFVenc({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
     setModal('')
     await loadAll()
   }
 
-  async function marcarPagado(id, desc) {
+  function abrirModalPago(v) {
+    setModalPago({venc:v, opcion:null, montoInput:String(v.monto), nuevoMonto:'', nuevaFecha:''})
+    setModal('pago')
+  }
+
+  async function confirmarPago() {
+    const {venc, opcion, montoInput, nuevoMonto, nuevaFecha} = modalPago
+    if (!venc || !opcion) return
     const supabase = getSupabase()
-    await supabase.from('vencimientos').update({pagado:true, fecha_pago: hoyStr()}).eq('id', id)
-    await logH('UPDATE', `Marcó como pagado: ${desc}`)
+    const montoPagado = parseFloat(String(montoInput).replace(/\./g,'')) || venc.monto
+    const ahora = new Date().toLocaleString('es-AR')
+    if (opcion === 'completo') {
+      await supabase.from('vencimientos').update({pagado:true, fecha_pago:hoyStr()}).eq('id',venc.id)
+      await supabase.from('gastos').insert({descripcion:`Pago completo: ${venc.descripcion}`, monto:montoPagado, fecha:hoyStr(), categoria:'otro', usuario_nombre:usuario?.nombre})
+      await logH('UPDATE', `Pago completo: ${venc.descripcion} ${fmt(montoPagado)} — ${usuario?.nombre} ${ahora}`)
+    } else if (opcion === 'parcial') {
+      const saldoRestante = parseFloat(String(nuevoMonto).replace(/\./g,'')) || Math.max(0, venc.monto - montoPagado)
+      await supabase.from('vencimientos').update({monto:saldoRestante, fecha:nuevaFecha||venc.fecha}).eq('id',venc.id)
+      await supabase.from('gastos').insert({descripcion:`Pago parcial: ${venc.descripcion}`, monto:montoPagado, fecha:hoyStr(), categoria:'otro', usuario_nombre:usuario?.nombre})
+      await logH('UPDATE', `Pago parcial: ${venc.descripcion} ${fmt(montoPagado)} pagado, saldo ${fmt(saldoRestante)} al ${nuevaFecha||venc.fecha} — ${usuario?.nombre} ${ahora}`)
+    } else if (opcion === 'fecha') {
+      if (!nuevaFecha) return
+      await supabase.from('vencimientos').update({fecha:nuevaFecha}).eq('id',venc.id)
+      await logH('UPDATE', `Fecha renegociada: ${venc.descripcion} → ${nuevaFecha} — ${usuario?.nombre}`)
+    }
+    setModal('')
+    setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})
     await loadAll()
+  }
+
+  async function acreditarTarjeta() {
+    const monto = parseFloat(String(tarjetaMontoInput).replace(/\./g,'')) || 0
+    if (!monto) return
+    const supabase = getSupabase()
+    const nuevoSaldo = (datosHoy.saldo_banco||0) + monto
+    const {error} = await supabase.from('datos_diarios')
+      .update({saldo_banco:nuevoSaldo, tarjeta_acreditada:true, tarjeta_monto_real:monto})
+      .eq('fecha', fechaDatosHoy||hoyStr())
+      .eq('usuario_id', userId)
+    if (!error) {
+      await logH('UPDATE', `Acreditación tarjeta: ${fmt(monto)} — ${usuario?.nombre} ${new Date().toLocaleString('es-AR')}`)
+      setDatosHoy({...datosHoy, saldo_banco:nuevoSaldo, tarjeta_acreditada:true, tarjeta_monto_real:monto})
+      setTarjetaInputShow(false)
+      setTarjetaMontoInput('')
+      setMsg('✓ Acreditado')
+      setTimeout(()=>setMsg(''),2000)
+    }
   }
 
   async function agregarDeuda() {
     if (!fDeuda.descripcion || !fDeuda.monto) return
     const supabase = getSupabase()
-    await supabase.from('deudas').insert({...fDeuda, monto: parseFloat(fDeuda.monto), usuario_nombre: usuario?.nombre})
+    await supabase.from('deudas').insert({...fDeuda, monto:parseFloat(fDeuda.monto), usuario_nombre:usuario?.nombre})
     await logH('INSERT', `Agregó deuda: ${fDeuda.descripcion} — ${fmt(parseFloat(fDeuda.monto))}`)
     setFDeuda({descripcion:'',monto:'',tipo:'tarjeta'})
     setModal('')
@@ -198,12 +277,26 @@ export default function Dashboard() {
   async function agregarGasto() {
     if (!fGasto.descripcion || !fGasto.monto) return
     const supabase = getSupabase()
-    await supabase.from('gastos').insert({...fGasto, monto: parseFloat(fGasto.monto), fecha: fechaCarga, usuario_nombre: usuario?.nombre})
+    await supabase.from('gastos').insert({...fGasto, monto:parseFloat(fGasto.monto), fecha:fechaCarga, usuario_nombre:usuario?.nombre})
     await logH('INSERT', `Registró gasto: ${fGasto.descripcion} — ${fmt(parseFloat(fGasto.monto))}`)
     setFGasto({descripcion:'',monto:'',categoria:'stock'})
     await loadAll()
     setMsg('✓ Gasto registrado')
-    setTimeout(() => setMsg(''), 2000)
+    setTimeout(()=>setMsg(''),2000)
+  }
+
+  async function agregarGastoSucursal() {
+    if (!fPagoSucursal.descripcion || !fPagoSucursal.monto) return
+    const supabase = getSupabase()
+    const sucLabels = {'695':'Córdoba 695','642':'Córdoba 642','sanjuan':'San Juan 655'}
+    const desc = `[SUC ${sucLabels[fPagoSucursal.sucursal]||fPagoSucursal.sucursal}] ${fPagoSucursal.descripcion}`
+    const monto = parseFloat(String(fPagoSucursal.monto).replace(/\./g,''))
+    await supabase.from('gastos').insert({descripcion:desc, monto, fecha:fechaCarga, categoria:fPagoSucursal.categoria, usuario_nombre:usuario?.nombre})
+    await logH('INSERT', `Pago sucursal ${sucLabels[fPagoSucursal.sucursal]}: ${fPagoSucursal.descripcion} — ${fmt(monto)}`)
+    setFPagoSucursal({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
+    await loadAll()
+    setMsg('✓ Pago registrado')
+    setTimeout(()=>setMsg(''),2000)
   }
 
   async function agregarCambio() {
@@ -215,18 +308,18 @@ export default function Dashboard() {
     const tipos = {'cheque_efectivo':'Cheque → Efectivo','echeq_efectivo':'E-cheq → Efectivo','banco_efectivo':'Banco → Efectivo','efectivo_banco':'Efectivo → Banco','transferencia_efectivo':'Transferencia → Efectivo','efectivo_transferencia':'Efectivo → Transferencia'}
     const tipoLabel = tipos[fCambio.tipo] || fCambio.tipo
     const desc = `Cambio: ${tipoLabel} | Original: ${fmt(orig)} | Recibido: ${fmt(recib)}${descuento > 0 ? ` | Descuento: ${fmt(descuento)}` : ''}${fCambio.descripcion ? ` — ${fCambio.descripcion}` : ''}`
-    await supabase.from('gastos').insert({descripcion: desc, monto: descuento > 0 ? descuento : 0, fecha: fechaCarga, categoria: 'cambio', usuario_nombre: usuario?.nombre})
+    await supabase.from('gastos').insert({descripcion:desc, monto:descuento > 0 ? descuento : 0, fecha:fechaCarga, categoria:'cambio', usuario_nombre:usuario?.nombre})
     await logH('INSERT', `Registró cambio: ${tipoLabel} ${fmt(orig)} → ${fmt(recib)}`)
     setFCambio({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
     await loadAll()
     setMsg('✓ Cambio registrado')
-    setTimeout(() => setMsg(''), 2000)
+    setTimeout(()=>setMsg(''),2000)
   }
 
   async function eliminarItem(tabla, id, desc) {
     if (!confirm(`¿Eliminar "${desc}"?`)) return
     const supabase = getSupabase()
-    await supabase.from(tabla).update({activa:false}).eq('id', id)
+    await supabase.from(tabla).update({activa:false}).eq('id',id)
     await logH('DELETE', `Eliminó de ${tabla}: ${desc}`)
     await loadAll()
   }
@@ -237,22 +330,49 @@ export default function Dashboard() {
     window.location.href = '/login'
   }
 
+  // Calculations
+  const totalVentasDia = (datosDia.ventas_695||0) + (datosDia.ventas_642||0) + (datosDia.ventas_sanjuan||0)
   const ventasHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.cheque_recibido||0)
-  const cajaTotal = (datosHoy.efectivo||0) + (datosHoy.saldo_banco||0)
-  const disponibleTotal = cajaTotal + (datosHoy.tarjeta_pendiente||0) + (datosHoy.transferencias||0)
+  const liquidoHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.saldo_banco||0)
+  const disponibleTotal = liquidoHoy + (datosHoy.tarjeta_pendiente||0)
+  const v3 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 3 })
+  const tv3 = v3.reduce((s,v) => s+v.monto, 0)
   const v7 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 7 })
-  const tv7 = v7.reduce((s, v) => s + v.monto, 0)
+  const tv7 = v7.reduce((s,v) => s+v.monto, 0)
   const v15 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 15 })
-  const tv15 = v15.reduce((s, v) => s + v.monto, 0)
+  const tv15 = v15.reduce((s,v) => s+v.monto, 0)
   const posNeta = disponibleTotal - tv15
   const pctObj = ventasHoy > 0 ? Math.min(100, Math.round(ventasHoy / OBJ_DIA * 100)) : 0
-  const cmv = (datosHoy.ventas_acumuladas_mes||0) * CMV_R
-  const mb = (datosHoy.ventas_acumuladas_mes||0) - cmv
+  const cmv = ventasMes * CMV_R
+  const mb = ventasMes - cmv
   const neto = mb - FIJOS
-  const stockValor = stock.reduce((s, i) => s + (i.cantidad * i.costo_unitario), 0)
-  const totalDeudas = deudas.reduce((s, d) => s + d.monto, 0)
-  const colorCaja = cajaTotal > 3e6 ? '#3ddc84' : cajaTotal > 1e6 ? '#f5a623' : '#ff5050'
+  const stockValor = stock.reduce((s,i) => s+(i.cantidad*i.costo_unitario), 0)
+  const totalDeudas = deudas.reduce((s,d) => s+d.monto, 0)
+  const colorLiquido = liquidoHoy > 3e6 ? '#3ddc84' : liquidoHoy > 1e6 ? '#f5a623' : '#ff5050'
   const colorVentas = pctObj >= 100 ? '#3ddc84' : pctObj >= 70 ? '#f5a623' : '#ff5050'
+  const diasDelMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
+
+  // Flujo 30 días
+  const { promedio: promedioEntradas, basadoEn: diasPromedio } = calcularEntradasProyectadas(historialDias)
+  const tablaFlujo = []
+  let acumFlujo = liquidoHoy
+  for (let i = 1; i <= 30; i++) {
+    const fecha = new Date(); fecha.setDate(fecha.getDate()+i)
+    const fechaStr = fecha.toISOString().split('T')[0]
+    const vencDia = vencimientos.filter(v => v.fecha === fechaStr)
+    const salidas = vencDia.reduce((s,v) => s+v.monto, 0)
+    acumFlujo += promedioEntradas - salidas
+    tablaFlujo.push({
+      fechaLabel: fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),
+      entradas: promedioEntradas,
+      salidas,
+      vencDia,
+      cajaDia: promedioEntradas - salidas,
+      acumulado: Math.round(acumFlujo),
+    })
+  }
+  const diasRojo = tablaFlujo.filter(r => r.acumulado < 0).length
+  const diasAmarillo = tablaFlujo.filter(r => r.acumulado >= 0 && r.acumulado < 1000000).length
 
   function tipoBadge(t) {
     const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',cambio:'#22d3ee',otro:'#7a7876'}
@@ -261,19 +381,10 @@ export default function Dashboard() {
   }
 
   const C = {
-    bg: '#13141a',
-    card: '#1c1e26',
-    cardBorder: 'rgba(255,255,255,0.09)',
-    inputBg: '#23252f',
-    label: '#8b9099',
-    muted: '#4a4e58',
-    text: '#e8eaf0',
-    accent: '#f5e000',
-    green: '#34d399',
-    red: '#f87171',
-    blue: '#60a5fa',
+    bg: '#13141a', card: '#1c1e26', cardBorder: 'rgba(255,255,255,0.09)',
+    inputBg: '#23252f', label: '#8b9099', muted: '#4a4e58', text: '#e8eaf0',
+    accent: '#f5e000', green: '#34d399', red: '#f87171', blue: '#60a5fa',
   }
-
   const S = {
     page: {padding:'16px 16px 90px',fontFamily:"'Syne',sans-serif"},
     sec: {fontSize:'11px',fontWeight:700,letterSpacing:'.12em',color:C.muted,textTransform:'uppercase',margin:'22px 0 12px'},
@@ -297,6 +408,7 @@ export default function Dashboard() {
     {id:'cargar',icon:'＋',label:'CARGAR'},
     {id:'pagos',icon:'⚡',label:'PAGOS'},
     {id:'pl',icon:'≋',label:'P&L'},
+    {id:'flujo',icon:'→',label:'FLUJO'},
     {id:'mas',icon:'···',label:'MÁS'},
   ]
 
@@ -313,6 +425,8 @@ export default function Dashboard() {
         .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
         .fomo-metric-value { font-size: 22px; }
         .fomo-metric-label { font-size: 10px; }
+        @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
+        .venc-urgente { animation: pulse-urgente 1.5s ease-in-out infinite; background: rgba(220,38,38,0.15) !important; }
         @media (min-width: 900px) {
           .fomo-desktop-layout { display: flex; min-height: 100vh; }
           .fomo-sidebar {
@@ -323,29 +437,11 @@ export default function Dashboard() {
             padding: 0; position: sticky; top: 0; height: 100vh;
             overflow: hidden;
           }
-          .fomo-sidebar-logo {
-            font-size: 26px; font-weight: 800; letter-spacing: -1px;
-            padding: 28px 28px 24px;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-            margin-bottom: 12px;
-          }
-          .fomo-sidebar-btn {
-            display: flex; align-items: center; gap: 14px;
-            padding: 13px 28px; font-size: 13px; font-weight: 700;
-            letter-spacing: .05em; text-transform: uppercase;
-            cursor: pointer; border: none; background: none;
-            font-family: 'Syne', sans-serif; width: 100%; text-align: left;
-            transition: all .15s; position: relative;
-          }
+          .fomo-sidebar-logo { font-size: 26px; font-weight: 800; letter-spacing: -1px; padding: 28px 28px 24px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 12px; }
+          .fomo-sidebar-btn { display: flex; align-items: center; gap: 14px; padding: 13px 28px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; border: none; background: none; font-family: 'Syne', sans-serif; width: 100%; text-align: left; transition: all .15s; position: relative; }
           .fomo-sidebar-btn:hover { background: rgba(255,255,255,0.05); }
-          .fomo-sidebar-btn.active {
-            background: rgba(245,166,35,0.08);
-            color: #f5a623 !important;
-          }
-          .fomo-sidebar-btn.active::before {
-            content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
-            width: 3px; background: #f5a623; border-radius: 0 3px 3px 0;
-          }
+          .fomo-sidebar-btn.active { background: rgba(245,166,35,0.08); color: #f5a623 !important; }
+          .fomo-sidebar-btn.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: #f5a623; border-radius: 0 3px 3px 0; }
           .fomo-sidebar-icon { font-size: 20px; width: 26px; text-align: center; }
           .fomo-main { flex: 1; min-width: 0; overflow-y: auto; }
           .fomo-header { padding: 22px 40px !important; }
@@ -357,20 +453,15 @@ export default function Dashboard() {
           .fomo-metric-label { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
           .fomo-modal-wrap { align-items: center !important; }
-          .fomo-sidebar-user {
-            margin-top: auto; padding: 20px 28px;
-            border-top: 1px solid rgba(255,255,255,0.07);
-            font-size: 12px; color: #8b9099; font-family: monospace; line-height: 1.6;
-          }
+          .fomo-sidebar-user { margin-top: auto; padding: 20px 28px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 12px; color: #8b9099; font-family: monospace; line-height: 1.6; }
           .fomo-card-row { font-size: 14px !important; padding: 13px 0 !important; }
           .fomo-section-title { font-size: 12px !important; margin: 28px 0 14px !important; }
         }
       `}</style>
 
-      {/* LAYOUT WRAPPER */}
       <div className="fomo-desktop-layout">
 
-      {/* SIDEBAR (solo desktop) */}
+      {/* SIDEBAR */}
       <aside className="fomo-sidebar">
         <div className="fomo-sidebar-logo">FO<span style={{color:C.accent}}>MO</span></div>
         {navItems.map(n => (
@@ -387,7 +478,6 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* MAIN */}
       <div className="fomo-main">
 
       {/* HEADER */}
@@ -400,7 +490,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ALERTAS */}
+      {/* BANNER URGENTE */}
+      {tab === 'hoy' && v3.length > 0 && (
+        <div onClick={()=>setTab('pagos')} style={{background:'#dc2626',color:'#fff',padding:'12px 18px',fontSize:'13px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:'8px',letterSpacing:'.02em'}}>
+          ⚠ ATENCIÓN: {v3.length} vencimiento(s) en los próximos 3 días — Total: {fmt(tv3)}
+          <span style={{marginLeft:'auto',fontSize:'11px',opacity:.8}}>Ver PAGOS →</span>
+        </div>
+      )}
+
+      {/* ALERTAS HOY */}
       {tab === 'hoy' && (
         <div style={{padding:'12px 16px 0'}}>
           {fechaDatosHoy && fechaDatosHoy !== hoyStr() && (
@@ -427,9 +525,9 @@ export default function Dashboard() {
           <div className="fomo-metrics-grid" style={{display:'grid',gap:'9px',marginBottom:'14px'}}>
             {[
               {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
-              {label:'CAJA TOTAL',val:fmtS(cajaTotal),color:colorCaja,sub:'efectivo + banco',prog:0},
+              {label:'LÍQUIDO HOY',val:fmtS(liquidoHoy),color:colorLiquido,sub:'efectivo + transf. + banco',prog:0},
               {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmtS(datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
+              {label:'MES ACTUAL',val:fmtS(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
               <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
@@ -447,11 +545,10 @@ export default function Dashboard() {
               {label:'Efectivo', val:datosHoy.efectivo||0},
               {label:'Transferencias', val:datosHoy.transferencias||0},
               {label:'Cheques / E-cheq recibidos', val:datosHoy.cheque_recibido||0},
-              {label:'Tarjeta (pendiente acred.)', val:datosHoy.tarjeta_pendiente||0, color:C.accent},
             ].map((r,i) => (
-              <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
+              <div key={i} style={S.row}>
                 <span style={{color:C.label}}>{r.label}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.color||'#eeecea'}}>{fmt(r.val||0)}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px'}}>{fmt(r.val)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'12px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px'}}>
@@ -466,16 +563,15 @@ export default function Dashboard() {
               {l:'Efectivo en caja', v:datosHoy.efectivo||0, c:'#3ddc84'},
               {l:'Saldo banco', v:datosHoy.saldo_banco||0, c:'#3ddc84'},
               {l:'Transferencias del día', v:datosHoy.transferencias||0, c:'#3ddc84'},
-              {l:'Tarjeta pendiente acreditación', v:datosHoy.tarjeta_pendiente||0, c:'#f5a623'},
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v||0)}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span>
               </div>
             ))}
             <div style={{...S.row,fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
-              <span>Total disponible</span>
-              <span style={{fontFamily:'monospace',color:disponibleTotal>2e6?'#3ddc84':'#f5a623'}}>{fmt(disponibleTotal)}</span>
+              <span>Total líquido</span>
+              <span style={{fontFamily:'monospace',color:liquidoHoy>2e6?'#3ddc84':'#f5a623'}}>{fmt(liquidoHoy)}</span>
             </div>
             <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(tv15)}</span></div>
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'14px',background:'rgba(245,166,35,0.06)',margin:'4px -13px -13px',padding:'12px 13px',borderRadius:'0 0 12px 12px'}}>
@@ -483,6 +579,45 @@ export default function Dashboard() {
               <span style={{fontFamily:'monospace',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
             </div>
           </div>
+
+          {/* Tarjeta pendiente — card separada */}
+          {(datosHoy.tarjeta_pendiente||0) > 0 && (
+            <div style={{...S.card,border:'1px solid rgba(245,166,35,0.35)',background:'rgba(245,166,35,0.05)'}}>
+              {datosHoy.tarjeta_acreditada ? (
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'13px',color:C.muted}}>Tarjeta — acreditada</span>
+                  <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>✓ {fmt(datosHoy.tarjeta_monto_real||datosHoy.tarjeta_pendiente)}</span>
+                </div>
+              ) : (
+                <>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:tarjetaInputShow?'12px':'0'}}>
+                    <div>
+                      <div style={{fontSize:'12px',color:C.accent,fontWeight:700,marginBottom:'2px'}}>Tarjeta pendiente acreditación</div>
+                      <div style={{fontFamily:'monospace',fontSize:'16px',fontWeight:700,color:C.accent}}>{fmt(datosHoy.tarjeta_pendiente)}</div>
+                    </div>
+                    {!tarjetaInputShow && (
+                      <button onClick={()=>{setTarjetaInputShow(true);setTarjetaMontoInput(String(datosHoy.tarjeta_pendiente))}}
+                        style={{background:'rgba(52,211,153,0.12)',border:'1px solid rgba(52,211,153,0.35)',borderRadius:'8px',color:C.green,cursor:'pointer',fontSize:'13px',padding:'8px 14px',fontWeight:700,flexShrink:0}}>
+                        ✓ Acreditó
+                      </button>
+                    )}
+                  </div>
+                  {tarjetaInputShow && (
+                    <div>
+                      <label style={S.label}>Monto real recibido (con comisiones)</label>
+                      <input type="text" inputMode="numeric" style={{...S.inp,marginBottom:'10px'}}
+                        value={tarjetaMontoInput}
+                        onChange={e=>setTarjetaMontoInput(e.target.value.replace(/[^\d]/g,''))}/>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px'}}>
+                        <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setTarjetaInputShow(false)}>Cancelar</button>
+                        <button style={S.btn} onClick={acreditarTarjeta}>Confirmar</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <div style={S.sec}>Últimos cambios del equipo</div>
           <div style={S.card}>
@@ -522,7 +657,6 @@ export default function Dashboard() {
             {label:'Cheques / E-cheq recibidos ($)', key:'cheque_recibido'},
             {label:'Tarjeta pendiente de acreditación ($)', key:'tarjeta_pendiente', hint:'Lo que el banco todavía no acreditó'},
             {label:'Saldo banco ($)', key:'saldo_banco'},
-            {label:'Ventas acumuladas del mes ($)', key:'ventas_acumuladas_mes'},
           ].map(f => (
             <div key={f.key} style={S.card}>
               <label style={S.label}>{f.label}</label>
@@ -534,6 +668,33 @@ export default function Dashboard() {
               {f.hint && <p style={{fontSize:'10px',color:C.muted,marginTop:'5px',fontFamily:'monospace'}}>{f.hint}</p>}
             </div>
           ))}
+
+          {/* Ventas por sucursal */}
+          <div style={S.sec}>Ventas del día por sucursal</div>
+          <div style={S.card}>
+            {[
+              {label:'Ventas Córdoba 695 — hoy ($)', key:'ventas_695'},
+              {label:'Ventas Córdoba 642 — hoy ($)', key:'ventas_642'},
+              {label:'Ventas San Juan 655 — hoy ($)', key:'ventas_sanjuan'},
+            ].map(f => (
+              <div key={f.key} style={{marginBottom:'12px'}}>
+                <label style={S.label}>{f.label}</label>
+                <input type="text" inputMode="numeric" style={S.inp}
+                  value={fmtInput(datosDia[f.key])}
+                  placeholder="0"
+                  onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value.replace(/\./g,''))||0})}
+                />
+              </div>
+            ))}
+            <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:'13px',color:C.label,fontWeight:600}}>Total del día</span>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:'16px',fontWeight:700,color:C.green}}>{fmt(totalVentasDia)}</span>
+            </div>
+            {(datosDia.ventas_695||0) === 0 && (datosDia.ventas_642||0) === 0 && (datosDia.ventas_sanjuan||0) > 0 && (
+              <p style={{fontSize:'10px',color:C.muted,marginTop:'8px',fontFamily:'monospace'}}>Ventas cargadas como San Juan (migración anterior)</p>
+            )}
+          </div>
+
           <div style={S.card}>
             <label style={S.label}>Notas del día (opcional)</label>
             <input type="text" style={S.inp} placeholder="ej: día lento, falta stock..."
@@ -542,6 +703,44 @@ export default function Dashboard() {
           <button style={{...S.btn, background: fechaCarga !== hoyStr() ? C.inputBg : C.accent, color: fechaCarga !== hoyStr() ? C.accent : '#000', border: fechaCarga !== hoyStr() ? `2px solid ${C.accent}` : 'none'}} onClick={guardarDatos} disabled={saving}>
             {saving ? 'Guardando...' : fechaCarga !== hoyStr() ? `✏️ Guardar modificación del ${fechaCarga.split('-').reverse().join('/')}` : `Guardar — ${usuario?.nombre}`}
           </button>
+
+          {/* Pago de sucursal */}
+          <div style={S.sec}>Registrar pago de sucursal</div>
+          <div style={S.card}>
+            <div style={{marginBottom:'10px'}}>
+              <label style={S.label}>Sucursal</label>
+              <select style={S.sel} value={fPagoSucursal.sucursal} onChange={e=>setFPagoSucursal({...fPagoSucursal,sucursal:e.target.value})}>
+                <option value="695">Córdoba 695</option>
+                <option value="642">Córdoba 642</option>
+                <option value="sanjuan">San Juan 655</option>
+              </select>
+            </div>
+            <div style={{marginBottom:'10px'}}>
+              <label style={S.label}>Descripción</label>
+              <input type="text" style={S.inp} placeholder="ej: Pago proveedor fundas"
+                value={fPagoSucursal.descripcion} onChange={e=>setFPagoSucursal({...fPagoSucursal,descripcion:e.target.value})}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
+              <div>
+                <label style={S.label}>Monto ($)</label>
+                <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fPagoSucursal.monto ? fmtInput(parseFloat(String(fPagoSucursal.monto).replace(/\./g,''))||0) : ''}
+                  onChange={e=>setFPagoSucursal({...fPagoSucursal,monto:e.target.value.replace(/\./g,'')})}/>
+              </div>
+              <div>
+                <label style={S.label}>Categoría</label>
+                <select style={S.sel} value={fPagoSucursal.categoria} onChange={e=>setFPagoSucursal({...fPagoSucursal,categoria:e.target.value})}>
+                  <option value="stock">Stock</option>
+                  <option value="servicio">Servicio</option>
+                  <option value="otro">Gasto operativo</option>
+                  <option value="cambio">Otro</option>
+                </select>
+              </div>
+            </div>
+            <button style={{...S.btn,background:'transparent',border:'1px solid rgba(96,165,250,0.4)',color:C.blue}} onClick={agregarGastoSucursal}>
+              + Registrar pago sucursal
+            </button>
+          </div>
 
           <div style={S.sec}>Registrar gasto del día</div>
           <div style={S.card}>
@@ -554,7 +753,6 @@ export default function Dashboard() {
                 <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
                   value={fGasto.monto ? fmtInput(parseFloat(fGasto.monto)||0) : ''}
                   onChange={e=>setFGasto({...fGasto,monto:e.target.value.replace(/\./g,'')})}/>
-
               </div>
               <div>
                 <label style={S.label}>Categoría</label>
@@ -593,14 +791,12 @@ export default function Dashboard() {
                 <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
                   value={fCambio.monto_original ? fmtInput(parseFloat(fCambio.monto_original)||0) : ''}
                   onChange={e=>setFCambio({...fCambio,monto_original:e.target.value.replace(/\./g,'')})}/>
-
               </div>
               <div>
                 <label style={S.label}>Lo que recibís ($)</label>
                 <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
                   value={fCambio.monto_recibido ? fmtInput(parseFloat(fCambio.monto_recibido)||0) : ''}
                   onChange={e=>setFCambio({...fCambio,monto_recibido:e.target.value.replace(/\./g,'')})}/>
-
               </div>
             </div>
             {fCambio.monto_original && fCambio.monto_recibido && parseFloat(fCambio.monto_original) > parseFloat(fCambio.monto_recibido) && (
@@ -648,8 +844,10 @@ export default function Dashboard() {
               const d = diasHasta(v.fecha)
               const col = d < 0 ? '#4a4e58' : d === 0 ? '#f87171' : d <= 3 ? '#f87171' : d <= 7 ? '#f5a623' : C.blue
               const badge = d < 0 ? 'VENCIDO' : d === 0 ? 'HOY' : d === 1 ? 'MAÑANA' : `${d} días`
+              const urgente = d >= 0 && d <= 3
               return (
-                <div key={i} style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px'}}>
+                <div key={i} className={urgente ? 'venc-urgente' : ''}
+                  style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px'}}>
                   <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:col,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:C.text}}>{v.descripcion}</div>
@@ -663,12 +861,35 @@ export default function Dashboard() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,marginBottom:'5px'}}>{fmt(v.monto)}</div>
                     <span style={{fontSize:'10px',fontWeight:700,padding:'3px 8px',borderRadius:'6px',background:col+'22',color:col,fontFamily:'monospace'}}>{badge}</span>
                   </div>
-                  <button style={{background:'rgba(52,211,153,0.1)',border:'1px solid rgba(52,211,153,0.3)',borderRadius:'8px',color:C.green,cursor:'pointer',fontSize:'14px',padding:'7px 12px',fontWeight:700,flexShrink:0}} onClick={()=>marcarPagado(v.id, v.descripcion)}>✓ Pagar</button>
+                  <button style={{background:'rgba(52,211,153,0.1)',border:'1px solid rgba(52,211,153,0.3)',borderRadius:'8px',color:C.green,cursor:'pointer',fontSize:'14px',padding:'7px 12px',fontWeight:700,flexShrink:0}} onClick={()=>abrirModalPago(v)}>✓ Pagar</button>
                 </div>
               )
             })}
             {vencimientos.length === 0 && <p style={{fontSize:'13px',color:C.muted,textAlign:'center',padding:'28px'}}>Sin vencimientos pendientes</p>}
           </div>
+
+          {/* Pagados colapsable */}
+          {vencPagados.length > 0 && (
+            <div style={{marginTop:'8px'}}>
+              <button style={{background:'none',border:'none',color:C.muted,fontSize:'11px',fontWeight:700,cursor:'pointer',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 0',display:'flex',alignItems:'center',gap:'6px'}}
+                onClick={()=>setMostrarPagados(!mostrarPagados)}>
+                {mostrarPagados ? '▲' : '▼'} Pagos registrados ({vencPagados.length})
+              </button>
+              {mostrarPagados && (
+                <div style={{...S.card,padding:0,overflow:'hidden',opacity:.7}}>
+                  {vencPagados.map((v,i) => (
+                    <div key={i} style={{padding:'12px 18px',borderBottom:i<vencPagados.length-1?`1px solid ${C.cardBorder}`:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontSize:'13px',color:C.muted}}>{v.descripcion}</div>
+                        <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{v.fecha_pago||v.fecha}</div>
+                      </div>
+                      <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>{fmt(v.monto)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',marginTop:'8px'}}>
             <div style={S.sec}>Deudas registradas</div>
@@ -706,7 +927,7 @@ export default function Dashboard() {
           <div style={S.sec}>P&L del mes — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
           <div style={S.card}>
             {[
-              {l:'Ventas acumuladas', v:datosHoy.ventas_acumuladas_mes||0, c:'#3ddc84'},
+              {l:'Ventas acumuladas', v:ventasMes, c:'#3ddc84'},
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
             ].map((r,i)=>(
               <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
@@ -726,6 +947,9 @@ export default function Dashboard() {
               <span>Resultado neto est.</span><span style={{fontFamily:'monospace',color:neto>0?'#3ddc84':'#ff5050'}}>{fmt(neto)}</span>
             </div>
           </div>
+          <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',marginBottom:'16px',padding:'0 2px'}}>
+            ⚠ Proyección parcial — {diasConDatos} de {diasDelMes} días del mes con datos cargados. Los gastos fijos reflejan el mes completo.
+          </div>
 
           <div style={S.sec}>Margen por categoría (estimado)</div>
           <div style={S.card}>
@@ -738,6 +962,26 @@ export default function Dashboard() {
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
                 <div><div style={{fontSize:'12px',marginBottom:'2px'}}>{r.cat}</div><div style={{fontSize:'10px',color:C.muted}}>{r.nota}</div></div>
                 <span style={{fontFamily:'monospace',fontSize:'13px',fontWeight:700,color:r.color}}>{r.pct}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={S.sec}>Comparación con meses anteriores</div>
+          <div style={S.card}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',paddingBottom:'10px',marginBottom:'6px',borderBottom:`1px solid ${C.cardBorder}`}}>
+              <span style={{fontSize:'10px',fontWeight:700,color:C.muted,textTransform:'uppercase'}}>Concepto</span>
+              <span style={{fontSize:'10px',fontWeight:700,color:C.muted,textTransform:'uppercase',textAlign:'right'}}>Feb 2026</span>
+              <span style={{fontSize:'10px',fontWeight:700,color:C.muted,textTransform:'uppercase',textAlign:'right'}}>Ene 2026</span>
+            </div>
+            {[
+              {l:'Ventas', feb:49426669, ene:53733339},
+              {l:'Margen bruto', feb:17223112, ene:20874994},
+              {l:'Resultado neto', feb:-4149593, ene:-1114097},
+            ].map((r,i)=>(
+              <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',padding:'9px 0',borderBottom:i<2?`1px solid ${C.cardBorder}`:'none'}}>
+                <span style={{fontSize:'12px',color:C.label}}>{r.l}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',textAlign:'right',color:r.feb<0?C.red:C.green}}>{fmt(r.feb)}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',textAlign:'right',color:r.ene<0?C.red:C.green}}>{fmt(r.ene)}</span>
               </div>
             ))}
           </div>
@@ -763,6 +1007,71 @@ export default function Dashboard() {
                 <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmtS(p.deuda_actual)}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* FLUJO */}
+      {tab === 'flujo' && (
+        <div className="fomo-content" style={S.page}>
+          <div style={S.sec}>Proyección de caja — 30 días</div>
+          <div style={{...S.card,background:'rgba(96,165,250,0.06)',border:'1px solid rgba(96,165,250,0.2)',marginBottom:'16px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontSize:'11px',color:C.muted,textTransform:'uppercase',fontWeight:700,letterSpacing:'.08em',marginBottom:'4px'}}>Caja de arranque</div>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:'22px',fontWeight:800,color:C.blue}}>{fmt(liquidoHoy)}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Promedio diario</div>
+                <div style={{fontFamily:'monospace',fontSize:'15px',color:C.green}}>{fmt(promedioEntradas)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>basado en {diasPromedio} días</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'DM Mono,monospace',fontSize:'12px'}}>
+              <thead>
+                <tr style={{borderBottom:`1px solid ${C.cardBorder}`}}>
+                  {['Fecha','Entradas est.','Salidas prog.','Caja del día','Acumulado'].map((h,i)=>(
+                    <th key={i} style={{padding:'8px 6px',color:C.muted,fontWeight:700,fontSize:'10px',textTransform:'uppercase',textAlign:i===0?'left':'right',letterSpacing:'.06em'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tablaFlujo.map((r,i)=>{
+                  const bg = r.acumulado < 0 ? 'rgba(220,38,38,0.15)' : r.acumulado < 1000000 ? 'rgba(245,166,35,0.1)' : 'transparent'
+                  return (
+                    <tr key={i} style={{borderBottom:`1px solid ${C.cardBorder}`,background:bg}}>
+                      <td style={{padding:'9px 6px',color:C.label}}>{r.fechaLabel}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:C.green}}>{fmtS(r.entradas)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:r.salidas>0?C.red:C.muted}}>
+                        {r.salidas > 0 ? (
+                          <span title={r.vencDia.map(v=>v.descripcion).join(', ')}>−{fmtS(r.salidas)}</span>
+                        ) : '—'}
+                      </td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:r.cajaDia>=0?C.green:C.red}}>{r.cajaDia>=0?'+':''}{fmtS(r.cajaDia)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',fontWeight:700,color:r.acumulado<0?C.red:r.acumulado<1000000?C.accent:C.green}}>{fmtS(r.acumulado)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{...S.card,marginTop:'16px'}}>
+            <div style={{...S.row}}>
+              <span style={{color:C.label,fontSize:'13px'}}>Saldo proyectado en 30 días</span>
+              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:tablaFlujo[29]?.acumulado>0?C.green:C.red}}>{fmtS(tablaFlujo[29]?.acumulado||0)}</span>
+            </div>
+            <div style={{...S.row}}>
+              <span style={{color:C.red,fontSize:'12px'}}>Días en rojo</span>
+              <span style={{fontFamily:'monospace',color:C.red,fontWeight:700}}>{diasRojo}</span>
+            </div>
+            <div style={{...S.row,borderBottom:'none'}}>
+              <span style={{color:C.accent,fontSize:'12px'}}>Días en amarillo</span>
+              <span style={{fontFamily:'monospace',color:C.accent,fontWeight:700}}>{diasAmarillo}</span>
+            </div>
           </div>
         </div>
       )}
@@ -818,7 +1127,7 @@ export default function Dashboard() {
               <label style={S.label}>Tipo</label>
               <select style={S.sel} value={fVenc.tipo} onChange={e=>setFVenc({...fVenc,tipo:e.target.value})}>
                 <option value="cheque">Cheque físico</option>
-                <option value="echeq">E-cheq (cheque electrónico)</option>
+                <option value="echeq">E-cheq</option>
                 <option value="prestamo">Préstamo a cobrar</option>
                 <option value="banco">Banco / Préstamo</option>
                 <option value="impuesto">Impuesto / AFIP</option>
@@ -871,19 +1180,110 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* BOTTOM NAV (solo mobile) */}
+      {/* MODAL PAGO */}
+      {modal === 'pago' && modalPago.venc && (
+        <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.80)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e=>{if(e.target===e.currentTarget){setModal('');setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})}}}>
+          <div style={{background:C.card,borderRadius:'20px',padding:'24px 20px',width:'100%',maxWidth:'460px',border:'1px solid rgba(255,255,255,0.13)'}}>
+            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'4px',color:C.text}}>Registrar pago</h3>
+            <p style={{fontSize:'12px',color:C.muted,marginBottom:'18px',fontFamily:'monospace'}}>{modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}</p>
+
+            {/* Selector de opción */}
+            {!modalPago.opcion && (
+              <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                {[
+                  {id:'completo',label:'Pago completo',desc:'Marcar como pagado y registrar salida',color:'rgba(52,211,153,0.12)',border:'rgba(52,211,153,0.3)',textColor:C.green},
+                  {id:'parcial',label:'Pago parcial',desc:'Pagar una parte, actualizar saldo y fecha',color:'rgba(245,166,35,0.08)',border:'rgba(245,166,35,0.3)',textColor:C.accent},
+                  {id:'fecha',label:'Renegocié la fecha',desc:'Solo mover la fecha de vencimiento',color:'rgba(96,165,250,0.08)',border:'rgba(96,165,250,0.25)',textColor:C.blue},
+                ].map(op => (
+                  <button key={op.id} onClick={()=>setModalPago({...modalPago,opcion:op.id})}
+                    style={{background:op.color,border:`1px solid ${op.border}`,borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                    <div style={{fontSize:'14px',fontWeight:700,color:op.textColor,marginBottom:'2px'}}>{op.label}</div>
+                    <div style={{fontSize:'11px',color:C.muted}}>{op.desc}</div>
+                  </button>
+                ))}
+                <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:C.muted,marginTop:'4px'}}
+                  onClick={()=>{setModal('');setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})}}>
+                  Cancelar
+                </button>
+              </div>
+            )}
+
+            {/* Pago completo */}
+            {modalPago.opcion === 'completo' && (
+              <div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={S.label}>Monto pagado ($)</label>
+                  <input type="text" inputMode="numeric" style={S.inp}
+                    value={fmtInput(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||0)}
+                    onChange={e=>setModalPago({...modalPago,montoInput:e.target.value.replace(/\./g,'')})}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
+                  <button style={S.btn} onClick={confirmarPago}>✓ Confirmar pago</button>
+                </div>
+              </div>
+            )}
+
+            {/* Pago parcial */}
+            {modalPago.opcion === 'parcial' && (
+              <div>
+                <div style={{marginBottom:'10px'}}>
+                  <label style={S.label}>Monto pagado hoy ($)</label>
+                  <input type="text" inputMode="numeric" style={S.inp}
+                    value={fmtInput(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||0)}
+                    onChange={e=>setModalPago({...modalPago,montoInput:e.target.value.replace(/\./g,'')})}/>
+                </div>
+                <div style={{marginBottom:'10px'}}>
+                  <label style={S.label}>Saldo restante ($)</label>
+                  <input type="text" inputMode="numeric" style={S.inp}
+                    value={fmtInput(parseFloat(String(modalPago.nuevoMonto).replace(/\./g,''))||Math.max(0,modalPago.venc.monto-(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||0)))}
+                    onChange={e=>setModalPago({...modalPago,nuevoMonto:e.target.value.replace(/\./g,'')})}/>
+                </div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={S.label}>Nueva fecha de vencimiento</label>
+                  <input type="date" style={{...S.inp,fontSize:'14px'}}
+                    value={modalPago.nuevaFecha}
+                    onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
+                  <button style={{...S.btn,background:'rgba(245,166,35,0.15)',border:'1px solid rgba(245,166,35,0.4)',color:C.accent}} onClick={confirmarPago}>✓ Registrar parcial</button>
+                </div>
+              </div>
+            )}
+
+            {/* Renegociar fecha */}
+            {modalPago.opcion === 'fecha' && (
+              <div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={S.label}>Nueva fecha de vencimiento</label>
+                  <input type="date" style={{...S.inp,fontSize:'14px'}}
+                    value={modalPago.nuevaFecha}
+                    onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
+                  <button style={{...S.btn,background:'rgba(96,165,250,0.12)',border:'1px solid rgba(96,165,250,0.3)',color:C.blue}} onClick={confirmarPago}>✓ Actualizar fecha</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAV */}
       <nav className="fomo-bottom-nav" style={{position:'fixed',bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.cardBorder}`,zIndex:200}}>
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)}
-            style={{flex:1,padding:'12px 4px 10px',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',cursor:'pointer',fontSize:'10px',fontWeight:700,letterSpacing:'.05em',color:tab===n.id?C.accent:C.muted,textTransform:'uppercase',border:'none',background:'none',fontFamily:"'Syne',sans-serif",transition:'color .15s'}}>
-            <span style={{fontSize:'18px',lineHeight:1}}>{n.icon}</span>
+            style={{flex:1,padding:'10px 2px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',cursor:'pointer',fontSize:'9px',fontWeight:700,letterSpacing:'.05em',color:tab===n.id?C.accent:C.muted,textTransform:'uppercase',border:'none',background:'none',fontFamily:"'Syne',sans-serif",transition:'color .15s'}}>
+            <span style={{fontSize:'16px',lineHeight:1}}>{n.icon}</span>
             {n.label}
           </button>
         ))}
       </nav>
 
-      </div>{/* end fomo-main */}
-      </div>{/* end fomo-desktop-layout */}
+      </div>
+      </div>
     </div>
   )
 }
