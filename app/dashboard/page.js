@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [modal, setModal] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [fechaUltimoDato, setFechaUltimoDato] = useState(null)
 
   useEffect(() => {
     const supabase = getSupabase()
@@ -77,7 +78,7 @@ export default function Dashboard() {
   async function loadAll(uid) {
     const supabase = getSupabase()
     const currentUid = uid || userId
-    const [v, d, g, p, s, h, ddAll] = await Promise.all([
+    const [v, d, g, p, s, h, ddHoy, ddUltimo] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado', false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa', true).order('monto', {ascending:false}),
       supabase.from('gastos').select('*').eq('fecha', hoyStr()).order('created_at', {ascending:false}),
@@ -85,6 +86,7 @@ export default function Dashboard() {
       supabase.from('stock').select('*').order('categoria'),
       supabase.from('historial').select('*').order('created_at', {ascending:false}).limit(20),
       supabase.from('datos_diarios').select('*').eq('fecha', hoyStr()).order('created_at'),
+      supabase.from('datos_diarios').select('*').order('fecha', {ascending:false}).limit(5),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -92,11 +94,18 @@ export default function Dashboard() {
     if (p.data) setProveedores(p.data)
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
-    if (ddAll.data && ddAll.data.length > 0) {
-      setDatosHoyPorUsuario(ddAll.data)
-      const miRow = ddAll.data.find(r => r.usuario_id === currentUid)
-        || ddAll.data.find(r => !r.usuario_id)
+    if (ddHoy.data && ddHoy.data.length > 0) {
+      setDatosHoyPorUsuario(ddHoy.data)
+      const miRow = ddHoy.data.find(r => r.usuario_id === currentUid) || ddHoy.data.find(r => !r.usuario_id)
       if (miRow) setDatosDia(miRow)
+    } else if (ddUltimo.data && ddUltimo.data.length > 0) {
+      // No hay datos de hoy — cargar el último día disponible como referencia
+      const miRow = ddUltimo.data.find(r => r.usuario_id === currentUid) || ddUltimo.data[0]
+      if (miRow) {
+        setDatosHoyPorUsuario([miRow])
+        setDatosDia(miRow)
+        setFechaUltimoDato(miRow.fecha)
+      }
     }
   }
 
@@ -141,6 +150,7 @@ export default function Dashboard() {
           if (idx >= 0) { const u = [...prev]; u[idx] = savedRow; return u }
           return [...prev, savedRow]
         })
+        setFechaUltimoDato(null)
       }
       await loadAll()
       setMsg('✓ Guardado')
@@ -393,6 +403,11 @@ export default function Dashboard() {
       {/* ALERTAS */}
       {tab === 'hoy' && (
         <div style={{padding:'12px 16px 0'}}>
+          {fechaUltimoDato && fechaUltimoDato !== hoyStr() && (
+            <div style={{background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:C.blue,marginBottom:'10px',fontWeight:500}}>
+              📅 Mostrando último dato cargado: <strong>{fechaUltimoDato.split('-').reverse().join('/')}</strong> — Todavía no cargaste datos de hoy.
+            </div>
+          )}
           {vencimientos.filter(v => diasHasta(v.fecha) === 0).length > 0 && (
             <div style={{background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:'#fca5a5',marginBottom:'10px',lineHeight:1.6,fontWeight:500}}>
               🔴 <strong>HOY vencen:</strong> {vencimientos.filter(v=>diasHasta(v.fecha)===0).map(v=>v.descripcion).join(', ')} — {fmt(vencimientos.filter(v=>diasHasta(v.fecha)===0).reduce((s,v)=>s+v.monto,0))}
