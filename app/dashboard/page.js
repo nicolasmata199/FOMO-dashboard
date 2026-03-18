@@ -508,6 +508,7 @@ export default function Dashboard() {
         .fomo-bottom-nav { display: flex; }
         .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
         .fomo-metric-value { font-size: 22px; }
+        .fomo-metric-value.small { font-size: 16px; }
         .fomo-metric-label { font-size: 10px; }
         @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
         .venc-urgente { animation: pulse-urgente 1.5s ease-in-out infinite; background: rgba(220,38,38,0.15) !important; }
@@ -534,6 +535,7 @@ export default function Dashboard() {
           .fomo-bottom-nav { display: none !important; }
           .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
           .fomo-metric-value { font-size: 28px !important; }
+          .fomo-metric-value.small { font-size: 20px !important; }
           .fomo-metric-label { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
           .fomo-modal-wrap { align-items: center !important; }
@@ -617,14 +619,14 @@ export default function Dashboard() {
           <div className="fomo-metrics-grid" style={{display:'grid',gap:'9px',marginBottom:'14px'}}>
             {[
               {label:'VENTAS HOY',val:fechaDatosHoy===hoyStr()?fmt(ventasHoy):'$0',color:fechaDatosHoy===hoyStr()?colorVentas:C.muted,sub:fechaDatosHoy===hoyStr()?`${pctObj}% del objetivo`:'Sin carga de hoy',prog:fechaDatosHoy===hoyStr()?pctObj:0},
-              {label:'LÍQUIDO HOY',val:fmt(liquidoHoy),color:colorLiquido,sub:'efectivo + transf. + banco',prog:0},
+              {label:'LÍQUIDO HOY',val:fmt(liquidoHoy),color:'#4ade80',sub:'efectivo + transf. + banco',prog:0},
               {label:'VENCE 7 DÍAS',val:fmt(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
               {label:'MES ACTUAL',val:fmt(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
-              <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
+              <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px',minHeight:'110px'}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
                 <div className="fomo-metric-label" style={{color:C.label,marginBottom:'8px',fontWeight:700,letterSpacing:'.06em',textTransform:'uppercase'}}>{k.label}</div>
-                <div className="fomo-metric-value" style={{fontWeight:800,fontFamily:'DM Mono,monospace',letterSpacing:'-1px',color:k.color,lineHeight:1}}>{k.val}</div>
+                <div className={`fomo-metric-value${k.val.length>10?' small':''}`} style={{fontWeight:800,fontFamily:'DM Mono,monospace',letterSpacing:'-1px',color:k.color,lineHeight:1}}>{k.val}</div>
                 <div style={{fontSize:'11px',color:C.muted,marginTop:'6px',fontFamily:'DM Mono,monospace'}}>{k.sub}</div>
                 {k.prog > 0 && <div style={{background:C.inputBg,borderRadius:'4px',height:'4px',marginTop:'10px',overflow:'hidden'}}><div style={{height:'100%',borderRadius:'4px',background:k.color,width:k.prog+'%',transition:'width .4s'}}/></div>}
               </div>
