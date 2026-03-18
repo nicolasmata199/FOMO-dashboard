@@ -100,13 +100,17 @@ export default function Dashboard() {
     // HOY: usar datos de hoy si existen, sino el más reciente
     const rowsHoy = ddHoy.data || []
     const rowsRecientes = ddReciente.data || []
+    // ventas_acumuladas_mes: usar el valor más reciente no-cero si el row elegido tiene 0
+    const mejorVentas = rowsRecientes.find(x => (x.ventas_acumuladas_mes||0) > 0)?.ventas_acumuladas_mes || 0
     if (rowsHoy.length > 0) {
       const r = rowsHoy.find(x => x.usuario_id === currentUid) || rowsHoy[0]
-      setDatosHoy(r)
+      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
+      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       setFechaDatosHoy(hoyStr())
     } else if (rowsRecientes.length > 0) {
       const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
-      setDatosHoy(r)
+      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
+      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       setFechaDatosHoy(r.fecha)
     }
 
