@@ -506,9 +506,9 @@ export default function Dashboard() {
         .fomo-sidebar { display: none; }
         .fomo-main { width: 100%; }
         .fomo-bottom-nav { display: flex; }
-        .fomo-metrics-grid { grid-template-columns: 1fr 1fr; }
-        .fomo-metric-card { min-height: 118px; padding: 18px 14px 14px; position: relative; overflow: hidden; box-sizing: border-box; }
-        .fomo-metric-value { font-size: clamp(16px, 2.5vw, 28px); line-height: 1.1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; }
+        .fomo-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
+        .fomo-metric-card { width: 100%; min-width: 0; min-height: 100px; padding: 16px 12px; position: relative; overflow: visible; box-sizing: border-box; }
+        .fomo-metric-value { font-size: clamp(14px, 1.8vw, 26px); line-height: 1.1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; width: 100%; overflow: visible; white-space: nowrap; }
         .fomo-metric-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
         .fomo-metric-sub { font-size: 11px; margin-top: 6px; font-family: 'DM Mono', monospace; }
         @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
@@ -534,9 +534,9 @@ export default function Dashboard() {
           .fomo-header-logo { display: none; }
           .fomo-content { max-width: 760px; margin: 0 auto; padding: 28px 40px 60px !important; }
           .fomo-bottom-nav { display: none !important; }
-          .fomo-metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
-          .fomo-metric-card { min-height: 128px !important; padding: 20px 16px 16px !important; }
-          .fomo-metric-value { font-size: clamp(16px, 2.5vw, 28px) !important; }
+          .fomo-metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 12px !important; }
+          .fomo-metric-card { min-height: 100px !important; padding: 16px 12px !important; }
+          .fomo-metric-value { font-size: clamp(14px, 1.8vw, 26px) !important; }
           .fomo-metric-label { font-size: 11px !important; }
           .fomo-metric-sub { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
@@ -618,7 +618,7 @@ export default function Dashboard() {
       {/* HOY */}
       {tab === 'hoy' && (
         <div className="fomo-content" style={S.page}>
-          <div className="fomo-metrics-grid" style={{display:'grid',gap:'9px',marginBottom:'14px'}}>
+          <div className="fomo-metrics-grid" style={{marginBottom:'14px'}}>
             {[
               {label:'VENTAS HOY',val:fechaDatosHoy===hoyStr()?fmt(ventasHoy):'$0',color:fechaDatosHoy===hoyStr()?colorVentas:C.muted,sub:fechaDatosHoy===hoyStr()?`${pctObj}% del objetivo`:'Sin carga de hoy',prog:fechaDatosHoy===hoyStr()?pctObj:0},
               {label:'LÍQUIDO HOY',val:fmt(liquidoHoy),color:'#4ade80',sub:'efectivo + transf. + banco',prog:0},
