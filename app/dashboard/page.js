@@ -661,52 +661,62 @@ export default function Dashboard() {
       {/* PAGOS */}
       {tab === 'pagos' && (
         <div className="fomo-content" style={S.page}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
             <div style={S.sec}>Vencimientos a pagar</div>
-            <button style={{fontSize:'11px',color:C.accent,background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('venc')}>+ Nuevo</button>
+            <button style={{fontSize:'12px',color:C.accent,background:'rgba(245,224,0,0.08)',border:`1px solid rgba(245,224,0,0.25)`,borderRadius:'8px',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'7px 14px'}} onClick={()=>setModal('venc')}>+ Nuevo</button>
           </div>
           <div style={{...S.card,padding:0,overflow:'hidden'}}>
             {vencimientos.map((v,i) => {
               const d = diasHasta(v.fecha)
-              const col = d < 0 ? '#3a3a38' : d === 0 ? '#ff5050' : d <= 3 ? '#ff5050' : d <= 7 ? '#f5a623' : '#5b9fff'
-              const badge = d < 0 ? 'PASADO' : d === 0 ? 'HOY' : d === 1 ? 'MAÑ' : `${d}d`
+              const col = d < 0 ? '#4a4e58' : d === 0 ? '#f87171' : d <= 3 ? '#f87171' : d <= 7 ? '#f5a623' : C.blue
+              const badge = d < 0 ? 'VENCIDO' : d === 0 ? 'HOY' : d === 1 ? 'MAÑANA' : `${d} días`
               return (
-                <div key={i} style={{padding:'11px 13px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',alignItems:'center',gap:'8px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'12px',marginBottom:'3px'}}>{v.descripcion} {tipoBadge(v.tipo)}</div>
-                    <div style={{fontSize:'10px',color:C.label,fontFamily:'monospace'}}>{v.fecha.split('-').reverse().join('/')} · {v.usuario_nombre||'sistema'}</div>
+                <div key={i} style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px'}}>
+                  <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:col,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:C.text}}>{v.descripcion}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                      {tipoBadge(v.tipo)}
+                      <span style={{fontSize:'11px',color:C.muted,fontFamily:'monospace'}}>{v.fecha.split('-').reverse().join('/')}</span>
+                      <span style={{fontSize:'11px',color:C.muted}}>· {v.usuario_nombre||'sistema'}</span>
+                    </div>
                   </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontFamily:'monospace',fontSize:'12px',color:C.red,marginBottom:'3px'}}>{fmtS(v.monto)}</div>
-                    <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',background:col+'22',color:col,fontFamily:'monospace'}}>{badge}</span>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,marginBottom:'5px'}}>{fmt(v.monto)}</div>
+                    <span style={{fontSize:'10px',fontWeight:700,padding:'3px 8px',borderRadius:'6px',background:col+'22',color:col,fontFamily:'monospace'}}>{badge}</span>
                   </div>
-                  <button style={{background:'none',border:'none',color:C.green,cursor:'pointer',fontSize:'16px',padding:'4px'}} onClick={()=>marcarPagado(v.id, v.descripcion)}>✓</button>
+                  <button style={{background:'rgba(52,211,153,0.1)',border:'1px solid rgba(52,211,153,0.3)',borderRadius:'8px',color:C.green,cursor:'pointer',fontSize:'14px',padding:'7px 12px',fontWeight:700,flexShrink:0}} onClick={()=>marcarPagado(v.id, v.descripcion)}>✓ Pagar</button>
                 </div>
               )
             })}
-            {vencimientos.length === 0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'20px'}}>Sin vencimientos pendientes</p>}
+            {vencimientos.length === 0 && <p style={{fontSize:'13px',color:C.muted,textAlign:'center',padding:'28px'}}>Sin vencimientos pendientes</p>}
           </div>
 
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px',marginTop:'4px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',marginTop:'8px'}}>
             <div style={S.sec}>Deudas registradas</div>
-            <button style={{fontSize:'11px',color:C.accent,background:'none',border:'none',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'4px 8px'}} onClick={()=>setModal('deuda')}>+ Nueva</button>
+            <button style={{fontSize:'12px',color:C.accent,background:'rgba(245,224,0,0.08)',border:`1px solid rgba(245,224,0,0.25)`,borderRadius:'8px',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'7px 14px'}} onClick={()=>setModal('deuda')}>+ Nueva</button>
           </div>
           <div style={{...S.card,padding:0,overflow:'hidden'}}>
             {deudas.map((d,i) => (
-              <div key={i} style={{padding:'11px 13px',borderBottom:'1px solid rgba(255,255,255,0.07)',display:'flex',alignItems:'center',gap:'8px'}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:'12px',marginBottom:'3px'}}>{d.descripcion} {tipoBadge(d.tipo)}</div>
-                  <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{d.usuario_nombre||'sistema'}</div>
+              <div key={i} style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px'}}>
+                <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:C.red,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:C.text}}>{d.descripcion}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                    {tipoBadge(d.tipo)}
+                    <span style={{fontSize:'11px',color:C.muted}}>{d.usuario_nombre||'sistema'}</span>
+                  </div>
                 </div>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmtS(d.monto)}</span>
-                <button style={{background:'none',border:'none',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'4px'}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
+                <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,flexShrink:0}}>{fmt(d.monto)}</span>
+                <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
               </div>
             ))}
+            {deudas.length === 0 && <p style={{fontSize:'13px',color:C.muted,textAlign:'center',padding:'28px'}}>Sin deudas registradas</p>}
           </div>
-          <div style={{...S.card,background:'rgba(245,166,35,0.06)',border:'1px solid rgba(245,166,35,0.15)'}}>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:'14px',fontWeight:700}}>
-              <span>Total deuda registrada</span>
-              <span style={{fontFamily:'monospace',color:C.red}}>{fmtS(totalDeudas)}</span>
+          <div style={{...S.card,background:'rgba(248,113,113,0.06)',border:`1px solid rgba(248,113,113,0.2)`,marginTop:'4px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:'14px',fontWeight:700,color:C.label}}>Total deuda registrada</span>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:'18px',fontWeight:800,color:C.red}}>{fmt(totalDeudas)}</span>
             </div>
           </div>
         </div>
