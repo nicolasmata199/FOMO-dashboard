@@ -21,6 +21,10 @@ function diasHasta(f) {
   const d = new Date(f + 'T12:00:00')
   return Math.round((d.getTime() - h.getTime()) / 86400000)
 }
+function fmtInput(n) {
+  if (!n) return ''
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
 function hoyStr() { return new Date().toISOString().split('T')[0] }
 function fechaLabel() {
   const d = new Date()
@@ -520,10 +524,10 @@ export default function Dashboard() {
           ].map(f => (
             <div key={f.key} style={S.card}>
               <label style={S.label}>{f.label}</label>
-              <input type="number" inputMode="numeric" style={S.inp}
-                value={datosDia[f.key] || ''}
+              <input type="text" inputMode="numeric" style={S.inp}
+                value={fmtInput(datosDia[f.key])}
                 placeholder="0"
-                onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value)||0})}
+                onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value.replace(/\./g,''))||0})}
               />
               {f.hint && <p style={{fontSize:'10px',color:C.muted,marginTop:'5px',fontFamily:'monospace'}}>{f.hint}</p>}
             </div>
@@ -545,8 +549,10 @@ export default function Dashboard() {
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px'}}>
               <div>
                 <label style={S.label}>Monto ($)</label>
-                <input type="number" inputMode="numeric" style={S.inp} placeholder="0"
-                  value={fGasto.monto} onChange={e=>setFGasto({...fGasto,monto:e.target.value})}/>
+                <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fGasto.monto ? fmtInput(parseFloat(fGasto.monto)||0) : ''}
+                  onChange={e=>setFGasto({...fGasto,monto:e.target.value.replace(/\./g,'')})}/>
+
               </div>
               <div>
                 <label style={S.label}>Categoría</label>
@@ -582,13 +588,17 @@ export default function Dashboard() {
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
               <div>
                 <label style={S.label}>Valor original ($)</label>
-                <input type="number" inputMode="numeric" style={S.inp} placeholder="0"
-                  value={fCambio.monto_original} onChange={e=>setFCambio({...fCambio,monto_original:e.target.value})}/>
+                <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fCambio.monto_original ? fmtInput(parseFloat(fCambio.monto_original)||0) : ''}
+                  onChange={e=>setFCambio({...fCambio,monto_original:e.target.value.replace(/\./g,'')})}/>
+
               </div>
               <div>
                 <label style={S.label}>Lo que recibís ($)</label>
-                <input type="number" inputMode="numeric" style={S.inp} placeholder="0"
-                  value={fCambio.monto_recibido} onChange={e=>setFCambio({...fCambio,monto_recibido:e.target.value})}/>
+                <input type="text" inputMode="numeric" style={S.inp} placeholder="0"
+                  value={fCambio.monto_recibido ? fmtInput(parseFloat(fCambio.monto_recibido)||0) : ''}
+                  onChange={e=>setFCambio({...fCambio,monto_recibido:e.target.value.replace(/\./g,'')})}/>
+
               </div>
             </div>
             {fCambio.monto_original && fCambio.monto_recibido && parseFloat(fCambio.monto_original) > parseFloat(fCambio.monto_recibido) && (
@@ -786,9 +796,10 @@ export default function Dashboard() {
             ].map(f=>(
               <div key={f.key} style={{marginBottom:'9px'}}>
                 <label style={S.label}>{f.label}</label>
-                <input type={f.type} inputMode={f.type==='number'?'numeric':undefined} style={S.inp}
+                <input type={f.type==='number'?'text':f.type} inputMode={f.type==='number'?'numeric':undefined} style={S.inp}
                   placeholder={f.placeholder||''}
-                  value={fVenc[f.key]} onChange={e=>setFVenc({...fVenc,[f.key]:e.target.value})}/>
+                  value={f.type==='number' ? (fVenc[f.key] ? fmtInput(parseFloat(fVenc[f.key])||0) : '') : fVenc[f.key]}
+                  onChange={e=>setFVenc({...fVenc,[f.key]: f.type==='number' ? e.target.value.replace(/\./g,'') : e.target.value})}/>
               </div>
             ))}
             <div style={{marginBottom:'9px'}}>
@@ -823,9 +834,10 @@ export default function Dashboard() {
             ].map(f=>(
               <div key={f.key} style={{marginBottom:'9px'}}>
                 <label style={S.label}>{f.label}</label>
-                <input type={f.type} inputMode={f.type==='number'?'numeric':undefined} style={S.inp}
+                <input type={f.type==='number'?'text':f.type} inputMode={f.type==='number'?'numeric':undefined} style={S.inp}
                   placeholder={f.placeholder}
-                  value={fDeuda[f.key]} onChange={e=>setFDeuda({...fDeuda,[f.key]:e.target.value})}/>
+                  value={f.type==='number' ? (fDeuda[f.key] ? fmtInput(parseFloat(fDeuda[f.key])||0) : '') : fDeuda[f.key]}
+                  onChange={e=>setFDeuda({...fDeuda,[f.key]: f.type==='number' ? e.target.value.replace(/\./g,'') : e.target.value})}/>
               </div>
             ))}
             <div style={{marginBottom:'9px'}}>
