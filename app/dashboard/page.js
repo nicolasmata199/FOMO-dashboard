@@ -35,14 +35,18 @@ function fechaLabel() {
 }
 
 const FLUJO_FALLBACK = 500000
-function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr) {
+function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimientosExistentes) {
   const fijos = [
-    {dia:5,  descripcion:'Sueldos',          monto:9340241},
-    {dia:10, descripcion:'Alquiler Cba 695',  monto:4090600},
-    {dia:10, descripcion:'Alquiler Cba 642',  monto:720000},
-    {dia:10, descripcion:'Alquiler San Juan',  monto:1222619},
-    {dia:15, descripcion:'Inversor',           monto:2160000},
+    {dia:5,  descripcion:'Sueldos',          monto:9340241, grupo:'sueldos'},
+    {dia:10, descripcion:'Alquiler Cba 695',  monto:4090600, grupo:'alquileres'},
+    {dia:10, descripcion:'Alquiler Cba 642',  monto:720000,  grupo:'alquileres'},
+    {dia:10, descripcion:'Alquiler San Juan',  monto:1222619, grupo:'alquileres'},
+    {dia:15, descripcion:'Inversor',           monto:2160000, grupo:null},
   ]
+  const coincide = {
+    sueldos:    v => v.descripcion.toLowerCase().includes('sueldo'),
+    alquileres: v => v.descripcion.toLowerCase().includes('alquiler') || v.descripcion.toLowerCase().includes('wifi'),
+  }
   const [iy,im,id] = fechaInicioStr.split('-').map(Number)
   const [fy,fm,fd] = fechaFinStr.split('-').map(Number)
   const inicio = new Date(iy, im-1, id)
@@ -53,6 +57,14 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr) {
     for (const f of fijos) {
       const fecha = new Date(cur.getFullYear(), cur.getMonth(), f.dia)
       if (fecha >= inicio && fecha <= fin) {
+        // Verificar si ya existe un vencimiento manual del mismo tipo en ese mes
+        if (f.grupo && coincide[f.grupo]) {
+          const mesStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`
+          const yaExiste = (vencimientosExistentes||[]).some(v =>
+            v.fecha.slice(0,7) === mesStr && coincide[f.grupo](v)
+          )
+          if (yaExiste) continue
+        }
         const y = fecha.getFullYear()
         const m = String(fecha.getMonth()+1).padStart(2,'0')
         const d = String(fecha.getDate()).padStart(2,'0')
@@ -420,11 +432,13 @@ export default function Dashboard() {
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
   const hoyBase = new Date()
-  const flujoInicioStr = (() => { const d = new Date(hoyBase); d.setDate(d.getDate()+1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
-  const flujoFinStr    = (() => { const d = new Date(hoyBase); d.setDate(d.getDate()+30); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
-  const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr)
+  const hY = hoyBase.getFullYear(), hM = hoyBase.getMonth(), hD = hoyBase.getDate()
+  const d1 = new Date(hY, hM, hD + 1),  d30 = new Date(hY, hM, hD + 30)
+  const flujoInicioStr = `${d1.getFullYear()}-${String(d1.getMonth()+1).padStart(2,'0')}-${String(d1.getDate()).padStart(2,'0')}`
+  const flujoFinStr    = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`
+  const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr, vencimientos)
   for (let i = 1; i <= 30; i++) {
-    const fecha = new Date(hoyBase); fecha.setDate(fecha.getDate()+i)
+    const fecha = new Date(hY, hM, hD + i)
     const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
     const vencDia  = vencimientos.filter(v => v.fecha === fechaStr)
     const fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
@@ -1130,11 +1144,11 @@ export default function Dashboard() {
                   return (
                     <tr key={i} style={{borderBottom:`1px solid ${C.cardBorder}`,background:bg}}>
                       <td style={{padding:'9px 6px',color:C.label}}>{r.fechaLabel}</td>
-                      <td style={{padding:'9px 6px',textAlign:'right',color:C.green}}>{fmtS(r.entradas)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:C.green}}>{fmt(r.entradas)}</td>
                       <td style={{padding:'9px 6px',textAlign:'right',color:r.salidas>0?C.red:C.muted,fontSize:'11px',verticalAlign:'top'}}>
                         {r.salidas > 0 ? (
                           <div>
-                            <div style={{fontWeight:700}}>−{fmtS(r.salidas)}</div>
+                            <div style={{fontWeight:700}}>−{fmt(r.salidas)}</div>
                             {r.todasSalidas.slice(0,2).map((v,j)=>(
                               <div key={j} style={{fontSize:'10px',color:C.muted,marginTop:'1px',textAlign:'right'}}>{v.descripcion.length>16?v.descripcion.slice(0,16)+'…':v.descripcion}</div>
                             ))}
@@ -1142,8 +1156,8 @@ export default function Dashboard() {
                           </div>
                         ) : '—'}
                       </td>
-                      <td style={{padding:'9px 6px',textAlign:'right',color:r.cajaDia>=0?C.green:C.red,verticalAlign:'top'}}>{r.cajaDia>=0?'+':''}{fmtS(r.cajaDia)}</td>
-                      <td style={{padding:'9px 6px',textAlign:'right',fontWeight:700,color:r.acumulado<0?C.red:r.acumulado<1000000?C.accent:C.green}}>{fmtS(r.acumulado)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:r.cajaDia>=0?C.green:C.red,verticalAlign:'top'}}>{r.cajaDia>=0?'+':''}{fmt(r.cajaDia)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',fontWeight:700,color:r.acumulado<0?C.red:r.acumulado<1000000?C.accent:C.green}}>{fmt(r.acumulado)}</td>
                     </tr>
                   )
                 })}
@@ -1154,7 +1168,7 @@ export default function Dashboard() {
           <div style={{...S.card,marginTop:'16px'}}>
             <div style={{...S.row}}>
               <span style={{color:C.label,fontSize:'13px'}}>Saldo proyectado en 30 días</span>
-              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:tablaFlujo[29]?.acumulado>0?C.green:C.red}}>{fmtS(tablaFlujo[29]?.acumulado||0)}</span>
+              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:tablaFlujo[29]?.acumulado>0?C.green:C.red}}>{fmt(tablaFlujo[29]?.acumulado||0)}</span>
             </div>
             <div style={{...S.row}}>
               <span style={{color:C.red,fontSize:'12px'}}>Días en rojo</span>
