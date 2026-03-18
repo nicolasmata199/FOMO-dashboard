@@ -135,6 +135,14 @@ export default function Dashboard() {
     } else {
       const esHoy = fechaCarga === hoyStr()
       await logH(esHoy ? 'UPDATE' : 'EDIT', `${esHoy ? 'Actualizó' : 'Modificó'} datos del ${fechaCarga} — caja: ${fmtS(datosDia.efectivo + datosDia.transferencias + datosDia.saldo_banco)}`)
+      if (fechaCarga === hoyStr()) {
+        const savedRow = {...datosDia, fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre}
+        setDatosHoyPorUsuario(prev => {
+          const idx = prev.findIndex(r => r.usuario_id === userId)
+          if (idx >= 0) { const u = [...prev]; u[idx] = savedRow; return u }
+          return [...prev, savedRow]
+        })
+      }
       await loadAll()
       setMsg('✓ Guardado')
       setTimeout(() => setMsg(''), 2000)
