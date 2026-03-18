@@ -18,8 +18,9 @@ function fmtS(n) {
 }
 function diasHasta(f) {
   const h = new Date(); h.setHours(0,0,0,0)
-  const d = new Date(f + 'T12:00:00')
-  return Math.round((d.getTime() - h.getTime()) / 86400000)
+  const [y,m,d] = f.split('-').map(Number)
+  const fd = new Date(y, m-1, d)
+  return Math.round((fd.getTime() - h.getTime()) / 86400000)
 }
 function fmtInput(n) {
   if (!n) return ''
@@ -34,6 +35,34 @@ function fechaLabel() {
 }
 
 const FLUJO_FALLBACK = 500000
+function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr) {
+  const fijos = [
+    {dia:5,  descripcion:'Sueldos',          monto:9340241},
+    {dia:10, descripcion:'Alquiler Cba 695',  monto:4090600},
+    {dia:10, descripcion:'Alquiler Cba 642',  monto:720000},
+    {dia:10, descripcion:'Alquiler San Juan',  monto:1222619},
+    {dia:15, descripcion:'Inversor',           monto:2160000},
+  ]
+  const [iy,im,id] = fechaInicioStr.split('-').map(Number)
+  const [fy,fm,fd] = fechaFinStr.split('-').map(Number)
+  const inicio = new Date(iy, im-1, id)
+  const fin    = new Date(fy, fm-1, fd)
+  const result = []
+  let cur = new Date(inicio.getFullYear(), inicio.getMonth(), 1)
+  while (cur <= fin) {
+    for (const f of fijos) {
+      const fecha = new Date(cur.getFullYear(), cur.getMonth(), f.dia)
+      if (fecha >= inicio && fecha <= fin) {
+        const y = fecha.getFullYear()
+        const m = String(fecha.getMonth()+1).padStart(2,'0')
+        const d = String(fecha.getDate()).padStart(2,'0')
+        result.push({fecha:`${y}-${m}-${d}`, descripcion:f.descripcion, monto:f.monto, esFijo:true})
+      }
+    }
+    cur.setMonth(cur.getMonth()+1)
+  }
+  return result
+}
 function calcularEntradasProyectadas(historialDias) {
   // Excluir registros con ventas_sanjuan > 5M (son acumulados del mes, no ventas de un día)
   const diarios = historialDias.filter(d => {
@@ -96,9 +125,16 @@ export default function Dashboard() {
       setUsuario(profile)
       setUserId(session.user.id)
       // Verificar Santander (una sola vez al cargar)
+      // Eliminar la cuota incorrecta "7/12 (última)" con fecha 2026-04-01 si existe
+      await supabase.from('vencimientos').delete().eq('descripcion','Cuota Santander 7/12 (última)').eq('fecha','2026-04-01')
       const santItems = [
         {descripcion:'Cuota Santander 6/12',fecha:'2026-03-22',monto:1788634,tipo:'banco'},
-        {descripcion:'Cuota Santander 7/12 (última)',fecha:'2026-04-01',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 7/12',fecha:'2026-04-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 8/12',fecha:'2026-05-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 9/12',fecha:'2026-06-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 10/12',fecha:'2026-07-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 11/12',fecha:'2026-08-22',monto:1788634,tipo:'banco'},
+        {descripcion:'Cuota Santander 12/12',fecha:'2026-09-22',monto:1788634,tipo:'banco'},
       ]
       const {data: santExist} = await supabase.from('vencimientos').select('descripcion,fecha').in('descripcion', santItems.map(s=>s.descripcion))
       for (const s of santItems) {
@@ -383,17 +419,24 @@ export default function Dashboard() {
   const { promedio: promedioEntradas, basadoEn: diasPromedio, fallback: flujFallback } = calcularEntradasProyectadas(historialDias)
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
+  const hoyBase = new Date()
+  const flujoInicioStr = (() => { const d = new Date(hoyBase); d.setDate(d.getDate()+1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
+  const flujoFinStr    = (() => { const d = new Date(hoyBase); d.setDate(d.getDate()+30); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
+  const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr)
   for (let i = 1; i <= 30; i++) {
-    const fecha = new Date(); fecha.setDate(fecha.getDate()+i)
-    const fechaStr = fecha.toISOString().split('T')[0]
-    const vencDia = vencimientos.filter(v => v.fecha === fechaStr)
-    const salidas = vencDia.reduce((s,v) => s+v.monto, 0)
+    const fecha = new Date(hoyBase); fecha.setDate(fecha.getDate()+i)
+    const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
+    const vencDia  = vencimientos.filter(v => v.fecha === fechaStr)
+    const fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
+    const todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
+    const salidas = todasSalidas.reduce((s,v) => s+v.monto, 0)
     acumFlujo += promedioEntradas - salidas
     tablaFlujo.push({
       fechaLabel: fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),
       entradas: promedioEntradas,
       salidas,
       vencDia,
+      todasSalidas,
       cajaDia: promedioEntradas - salidas,
       acumulado: Math.round(acumFlujo),
     })
@@ -538,11 +581,19 @@ export default function Dashboard() {
               🔴 <strong>HOY vencen:</strong> {vencimientos.filter(v=>diasHasta(v.fecha)===0).map(v=>v.descripcion).join(', ')} — {fmt(vencimientos.filter(v=>diasHasta(v.fecha)===0).reduce((s,v)=>s+v.monto,0))}
             </div>
           )}
-          {vencimientos.filter(v => diasHasta(v.fecha) === 1).length > 0 && (
-            <div style={{background:'rgba(245,166,35,0.1)',border:'1px solid rgba(245,166,35,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:'#fcd34d',marginBottom:'10px',lineHeight:1.6,fontWeight:500}}>
-              🟡 <strong>Mañana vencen:</strong> {vencimientos.filter(v=>diasHasta(v.fecha)===1).map(v=>v.descripcion).join(', ')}
-            </div>
-          )}
+          {(() => {
+            const manana = vencimientos.filter(v=>diasHasta(v.fecha)===1)
+            if (manana.length === 0) return null
+            const totalManana = manana.reduce((s,v)=>s+v.monto,0)
+            const texto = manana.length === 1
+              ? `${manana[0].descripcion} — ${fmt(manana[0].monto)}`
+              : `${manana.length} obligaciones — Total: ${fmt(totalManana)}`
+            return (
+              <div style={{background:'rgba(245,166,35,0.1)',border:'1px solid rgba(245,166,35,0.25)',borderRadius:'12px',padding:'12px 16px',fontSize:'13px',color:'#fcd34d',marginBottom:'10px',lineHeight:1.6,fontWeight:500}}>
+                🟡 <strong>Mañana vencen:</strong> {texto}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -551,10 +602,10 @@ export default function Dashboard() {
         <div className="fomo-content" style={S.page}>
           <div className="fomo-metrics-grid" style={{display:'grid',gap:'9px',marginBottom:'14px'}}>
             {[
-              {label:'VENTAS HOY',val:ventasHoy>0?fmtS(ventasHoy):'—',color:colorVentas,sub:`${pctObj}% del objetivo`,prog:pctObj},
-              {label:'LÍQUIDO HOY',val:fmtS(liquidoHoy),color:colorLiquido,sub:'efectivo + transf. + banco',prog:0},
-              {label:'VENCE 7 DÍAS',val:fmtS(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmtS(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
+              {label:'VENTAS HOY',val:fechaDatosHoy===hoyStr()?fmt(ventasHoy):'$0',color:fechaDatosHoy===hoyStr()?colorVentas:C.muted,sub:fechaDatosHoy===hoyStr()?`${pctObj}% del objetivo`:'Sin carga de hoy',prog:fechaDatosHoy===hoyStr()?pctObj:0},
+              {label:'LÍQUIDO HOY',val:fmt(liquidoHoy),color:colorLiquido,sub:'efectivo + transf. + banco',prog:0},
+              {label:'VENCE 7 DÍAS',val:fmt(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
+              {label:'MES ACTUAL',val:fmt(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
               <div key={i} style={{...S.card,position:'relative',overflow:'hidden',paddingTop:'18px'}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
@@ -793,6 +844,8 @@ export default function Dashboard() {
                   <option value="banco">Banco</option>
                   <option value="impuesto">Impuesto</option>
                   <option value="servicio">Servicio</option>
+                  <option value="ajuste_caja">Ajuste de caja</option>
+                  <option value="ajuste_contable">Ajuste contable</option>
                   <option value="otro">Otro</option>
                 </select>
               </div>
@@ -1066,7 +1119,7 @@ export default function Dashboard() {
             <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'DM Mono,monospace',fontSize:'12px'}}>
               <thead>
                 <tr style={{borderBottom:`1px solid ${C.cardBorder}`}}>
-                  {['Fecha','Entradas est.','Salidas prog.','Caja del día','Acumulado'].map((h,i)=>(
+                  {['Fecha','Entradas est.','Salidas prog.','Neto del día','Acumulado'].map((h,i)=>(
                     <th key={i} style={{padding:'8px 6px',color:C.muted,fontWeight:700,fontSize:'10px',textTransform:'uppercase',textAlign:i===0?'left':'right',letterSpacing:'.06em'}}>{h}</th>
                   ))}
                 </tr>
@@ -1078,12 +1131,18 @@ export default function Dashboard() {
                     <tr key={i} style={{borderBottom:`1px solid ${C.cardBorder}`,background:bg}}>
                       <td style={{padding:'9px 6px',color:C.label}}>{r.fechaLabel}</td>
                       <td style={{padding:'9px 6px',textAlign:'right',color:C.green}}>{fmtS(r.entradas)}</td>
-                      <td style={{padding:'9px 6px',textAlign:'right',color:r.salidas>0?C.red:C.muted}}>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:r.salidas>0?C.red:C.muted,fontSize:'11px',verticalAlign:'top'}}>
                         {r.salidas > 0 ? (
-                          <span title={r.vencDia.map(v=>v.descripcion).join(', ')}>−{fmtS(r.salidas)}</span>
+                          <div>
+                            <div style={{fontWeight:700}}>−{fmtS(r.salidas)}</div>
+                            {r.todasSalidas.slice(0,2).map((v,j)=>(
+                              <div key={j} style={{fontSize:'10px',color:C.muted,marginTop:'1px',textAlign:'right'}}>{v.descripcion.length>16?v.descripcion.slice(0,16)+'…':v.descripcion}</div>
+                            ))}
+                            {r.todasSalidas.length > 2 && <div style={{fontSize:'10px',color:C.muted}}>+{r.todasSalidas.length-2} más</div>}
+                          </div>
                         ) : '—'}
                       </td>
-                      <td style={{padding:'9px 6px',textAlign:'right',color:r.cajaDia>=0?C.green:C.red}}>{r.cajaDia>=0?'+':''}{fmtS(r.cajaDia)}</td>
+                      <td style={{padding:'9px 6px',textAlign:'right',color:r.cajaDia>=0?C.green:C.red,verticalAlign:'top'}}>{r.cajaDia>=0?'+':''}{fmtS(r.cajaDia)}</td>
                       <td style={{padding:'9px 6px',textAlign:'right',fontWeight:700,color:r.acumulado<0?C.red:r.acumulado<1000000?C.accent:C.green}}>{fmtS(r.acumulado)}</td>
                     </tr>
                   )
