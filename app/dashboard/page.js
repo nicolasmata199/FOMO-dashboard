@@ -384,32 +384,41 @@ export default function Dashboard() {
     const monto = parseFloat(String(tarjetaMontoInput).replace(/\./g,'')) || 0
     if (!monto) return
     const supabase = getSupabase()
-    const nuevoSaldo = (datosHoy.saldo_banco||0) + monto
+
+    // 1. Marcar el día original como acreditado (sin tocar saldo_banco de ese día)
     const {error} = await supabase.from('datos_diarios')
-      .update({saldo_banco:nuevoSaldo, tarjeta_acreditada:true, tarjeta_monto_real:monto})
-      .eq('fecha', fechaDatosHoy||hoyStr())
+      .update({ tarjeta_acreditada: true, tarjeta_monto_real: monto })
+      .eq('fecha', fechaDatosHoy || hoyStr())
       .eq('usuario_id', userId)
+
     if (!error) {
-      // Registrar acreditación como entrada de banco en el día de hoy
+      // 2. Sumar el monto acreditado al saldo_banco del día de HOY
       const hoy = hoyStr()
       const {data: rowHoy} = await supabase.from('datos_diarios')
-        .select('id,saldo_banco').eq('fecha',hoy).eq('usuario_id',userId).single()
+        .select('id,saldo_banco')
+        .eq('fecha', hoy)
+        .eq('usuario_id', userId)
+        .single()
+
       if (rowHoy) {
         await supabase.from('datos_diarios')
-          .update({ saldo_banco: (rowHoy.saldo_banco||0) + monto })
+          .update({ saldo_banco: (rowHoy.saldo_banco || 0) + monto })
           .eq('id', rowHoy.id)
       } else {
         await supabase.from('datos_diarios')
-          .upsert({ fecha:hoy, usuario_id:userId, usuario_nombre:usuario?.nombre, saldo_banco: monto },
-                  { onConflict:'fecha,usuario_id' })
+          .upsert(
+            { fecha: hoy, usuario_id: userId, usuario_nombre: usuario?.nombre, saldo_banco: monto },
+            { onConflict: 'fecha,usuario_id' }
+          )
       }
+
       await logH('UPDATE', `Acreditación tarjeta: ${fmt(monto)} — ${usuario?.nombre} ${new Date().toLocaleString('es-AR')}`)
-      setDatosHoy({...datosHoy, saldo_banco:nuevoSaldo, tarjeta_acreditada:true, tarjeta_monto_real:monto})
-      setTarjetaAcumulada(prev => Math.max(0, prev - monto))
+
+      // 3. Recargar todos los datos para reflejar cambios reales de Supabase
+      await loadAll()
+
       setTarjetaInputShow(false)
       setTarjetaMontoInput('')
-      setMsg('✓ Acreditado')
-      setTimeout(()=>setMsg(''),2000)
     }
   }
 
