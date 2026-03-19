@@ -361,7 +361,8 @@ export default function Dashboard() {
       if (rowHoy) {
         await supabase.from('datos_diarios').update({[campo]: (rowHoy[campo]||0) - montoPagado}).eq('id',rowHoy.id)
       } else {
-        await supabase.from('datos_diarios').upsert({fecha:hoyStr(), usuario_id:userId, usuario_nombre:usuario?.nombre, [campo]: -montoPagado}, {onConflict:'fecha,usuario_id'})
+          // No existe registro de hoy — no crear uno vacío, solo loguear
+          await logH('UPDATE', `Sin registro de hoy para descontar pago — ${campo}: ${fmt(montoPagado)}`)
       }
     } else if (medio === 'cheque') {
       for (const ch of cheques) {
@@ -457,7 +458,8 @@ export default function Dashboard() {
     const {data: rowHoy} = await supabase.from('datos_diarios')
       .select('*')
       .eq('fecha', hoy)
-      .eq('usuario_id', userId)
+      .order('id', { ascending: false })
+      .limit(1)
       .single()
     if (rowHoy) {
       await supabase.from('datos_diarios')
