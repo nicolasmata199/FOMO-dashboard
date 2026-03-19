@@ -75,19 +75,16 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
   return result
 }
 function calcularPromedio7d(historialDias) {
-  // Últimos 7 días hábiles (lun-sáb) con ventas > 0
-  const diasHabiles = historialDias
-    .filter(d => {
-      const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
-      if (total <= 0) return false
-      const [y,m,day] = d.fecha.split('-').map(Number)
-      return new Date(y, m-1, day).getDay() !== 0
-    })
-    .sort((a,b) => b.fecha.localeCompare(a.fecha))
-    .slice(0, 7)
-  if (diasHabiles.length === 0) return { promedio: 0, basadoEn: 0 }
-  const total = diasHabiles.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
-  return { promedio: Math.round(total / diasHabiles.length), basadoEn: diasHabiles.length }
+  // Solo registros con ventas reales: > 0 y < 5.000.000 (excluye acumulados del mes)
+  const diasValidos = historialDias.filter(d => {
+    const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
+    return total > 0 && total < 5000000
+  })
+  const count = diasValidos.length
+  if (count < 7) return { promedio: 0, basadoEn: count, faltanDias: 7 - count }
+  const ultimos7 = diasValidos.sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 7)
+  const total = ultimos7.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
+  return { promedio: Math.round(total / 7), basadoEn: 7, faltanDias: 0 }
 }
 
 export default function Dashboard() {
@@ -485,7 +482,7 @@ export default function Dashboard() {
   const diasDelMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
 
   // Flujo 33 días (hoy-3 a hoy+29)
-  const { promedio: promedioEntradas, basadoEn: diasPromedio } = calcularPromedio7d(historialDias)
+  const { promedio: promedioEntradas, basadoEn: diasPromedio, faltanDias } = calcularPromedio7d(historialDias)
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
   const hoyBase = new Date()
@@ -494,8 +491,6 @@ export default function Dashboard() {
   const flujoInicioStr = `${d_m3.getFullYear()}-${String(d_m3.getMonth()+1).padStart(2,'0')}-${String(d_m3.getDate()).padStart(2,'0')}`
   const flujoFinStr    = `${d_p29.getFullYear()}-${String(d_p29.getMonth()+1).padStart(2,'0')}-${String(d_p29.getDate()).padStart(2,'0')}`
   const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr, vencimientos)
-  const datosDiariosMap = {}
-  historialDias.forEach(d => { datosDiariosMap[d.fecha] = d })
   const todosVencimientosMap = {}
   ;[...vencimientos, ...vencPagados].forEach(v => {
     if (!todosVencimientosMap[v.fecha]) todosVencimientosMap[v.fecha] = []
@@ -506,15 +501,8 @@ export default function Dashboard() {
     const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
     const esPasado = i < 0
     const esDomingo = fecha.getDay() === 0
-    let entradas = 0
-    if (!esDomingo) {
-      if (i <= 0) {
-        const dd = datosDiariosMap[fechaStr]
-        entradas = dd ? Math.max(0, (dd.ventas_695||0)+(dd.ventas_642||0)+(dd.ventas_sanjuan||0)) : 0
-      } else {
-        entradas = promedioEntradas
-      }
-    }
+    // Entradas: 0 para pasados, 0 para hoy/futuro si promedio no activado, promedio si activado
+    const entradas = (!esDomingo && i > 0 && promedioEntradas > 0) ? promedioEntradas : 0
     let vencDia, fijosDia, todasSalidas
     if (esPasado) {
       vencDia = todosVencimientosMap[fechaStr] || []
@@ -1221,15 +1209,17 @@ export default function Dashboard() {
               </div>
               <div style={{textAlign:'right'}}>
                 <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Promedio diario</div>
-                <div style={{fontFamily:'monospace',fontSize:'15px',color:diasPromedio>0?C.green:C.accent}}>{fmt(promedioEntradas)}</div>
-                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{diasPromedio > 0 ? `basado en ${diasPromedio} días` : 'sin datos históricos'}</div>
+                <div style={{fontFamily:'monospace',fontSize:'15px',color:promedioEntradas>0?C.green:C.accent}}>{fmt(promedioEntradas)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{promedioEntradas > 0 ? `basado en ${diasPromedio} días` : `${diasPromedio}/7 días cargados`}</div>
               </div>
             </div>
           </div>
 
           {promedioEntradas === 0 && (
             <div style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'11px 14px',marginBottom:'14px',fontSize:'12px',color:C.accent,fontFamily:'monospace',lineHeight:1.6}}>
-              ⚠ Sin ventas diarias cargadas — las entradas estimadas aparecen en $0. Cargá ventas por sucursal para mejorar la proyección.
+              {faltanDias > 0
+                ? `⚠ Necesitás cargar ${faltanDias} día${faltanDias>1?'s':''} más de ventas para activar la proyección. (${diasPromedio}/7 días listos)`
+                : '⚠ Sin ventas diarias cargadas — entradas en $0. Cargá ventas por sucursal para activar la proyección.'}
             </div>
           )}
           <div style={{overflowX:'auto'}}>
