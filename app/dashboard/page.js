@@ -112,6 +112,7 @@ export default function Dashboard() {
   const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock'})
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
+  const [fAjuste, setFAjuste] = useState({campo:'efectivo', monto:'', motivo:''})
   const [modal, setModal] = useState('')
   const MP0 = {venc:null,paso:1,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:'',medio:null,cuotas:1,cheques:[{monto:'',fecha:''}],interesInput:'0',notaInput:'',subopcionD:null}
   const [modalPago, setModalPago] = useState(MP0)
@@ -429,6 +430,27 @@ export default function Dashboard() {
     await logH('INSERT', `Agregó deuda: ${fDeuda.descripcion} — ${fmt(parseFloat(fDeuda.monto))}`)
     setFDeuda({descripcion:'',monto:'',tipo:'tarjeta'})
     setModal('')
+    await loadAll()
+  }
+
+  async function guardarAjuste() {
+    const monto = parseFloat(String(fAjuste.monto).replace(/\./g,''))
+    if (!monto || !fAjuste.motivo) return
+    const supabase = getSupabase()
+    const hoy = hoyStr()
+    const {data: rowHoy} = await supabase.from('datos_diarios')
+      .select('id,efectivo,transferencias,saldo_banco').eq('fecha',hoy).eq('usuario_id',userId).single()
+    if (rowHoy) {
+      await supabase.from('datos_diarios')
+        .update({ [fAjuste.campo]: (rowHoy[fAjuste.campo]||0) + monto })
+        .eq('id', rowHoy.id)
+    } else {
+      await supabase.from('datos_diarios')
+        .upsert({ fecha:hoy, usuario_id:userId, usuario_nombre:usuario?.nombre, [fAjuste.campo]: monto },
+                { onConflict:'fecha,usuario_id' })
+    }
+    await logH('UPDATE', `Ajuste ${fAjuste.campo}: ${monto > 0 ? '+' : ''}${fmt(monto)} — Motivo: ${fAjuste.motivo}`)
+    setFAjuste({campo:'efectivo', monto:'', motivo:''})
     await loadAll()
   }
 
@@ -793,10 +815,10 @@ export default function Dashboard() {
           {/* Tarjeta pendiente — card separada */}
           {tarjetaAcumulada > 0 && (
             <div style={{...S.card,border:'1px solid rgba(245,166,35,0.35)',background:'rgba(245,166,35,0.05)'}}>
-              {datosHoy.tarjeta_acreditada ? (
+              {tarjetaAcumulada <= 0 ? (
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <span style={{fontSize:'13px',color:C.muted}}>Tarjeta — acreditada</span>
-                  <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>✓ {fmt(datosHoy.tarjeta_monto_real||datosHoy.tarjeta_pendiente)}</span>
+                  <span style={{fontSize:'13px',color:C.muted}}>Tarjeta — todo acreditado</span>
+                  <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>✓</span>
                 </div>
               ) : (
                 <>
@@ -911,6 +933,31 @@ export default function Dashboard() {
             <input type="text" style={S.inp} placeholder="ej: día lento, falta stock..."
               value={datosDia.notas||''} onChange={e => setDatosDia({...datosDia, notas:e.target.value})}/>
           </div>
+          <div style={S.sec}>Ajuste de caja</div>
+          <div style={S.card}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
+              <div>
+                <label style={S.label}>Campo a ajustar</label>
+                <select style={S.sel} value={fAjuste.campo} onChange={e=>setFAjuste({...fAjuste,campo:e.target.value})}>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencias">Transferencias</option>
+                  <option value="saldo_banco">Banco</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Monto (positivo o negativo)</label>
+                <input type="text" inputMode="numeric" style={S.inp} placeholder="ej: -5000"
+                  value={fAjuste.monto} onChange={e=>setFAjuste({...fAjuste,monto:e.target.value.replace(/[^\d\-]/g,'')})}/>
+              </div>
+            </div>
+            <label style={S.label}>Motivo (obligatorio)</label>
+            <input type="text" style={{...S.inp,marginBottom:'10px'}} placeholder="ej: Corrección error de carga"
+              value={fAjuste.motivo} onChange={e=>setFAjuste({...fAjuste,motivo:e.target.value})}/>
+            <button style={{...S.btn,background:'transparent',border:'1px solid rgba(167,139,250,0.4)',color:'#a78bfa'}} onClick={guardarAjuste}>
+              Aplicar ajuste
+            </button>
+          </div>
+
           <button style={{...S.btn, background: fechaCarga !== hoyStr() ? C.inputBg : C.accent, color: fechaCarga !== hoyStr() ? C.accent : '#000', border: fechaCarga !== hoyStr() ? `2px solid ${C.accent}` : 'none'}} onClick={guardarDatos} disabled={saving}>
             {saving ? 'Guardando...' : fechaCarga !== hoyStr() ? `✏️ Guardar modificación del ${fechaCarga.split('-').reverse().join('/')}` : `Guardar — ${usuario?.nombre}`}
           </button>
