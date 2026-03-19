@@ -26,7 +26,7 @@ function fmtInput(n) {
   if (!n) return ''
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
-function hoyStr() { return new Date().toISOString().split('T')[0] }
+function hoyStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 function fechaLabel() {
   const d = new Date()
   const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
