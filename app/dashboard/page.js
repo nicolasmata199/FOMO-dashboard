@@ -617,7 +617,7 @@ export default function Dashboard() {
   }
   const S = {
     page: {padding:'16px 16px 90px',fontFamily:"'Syne',sans-serif"},
-    sec: {fontSize:'11px',fontWeight:700,letterSpacing:'.12em',color:C.muted,textTransform:'uppercase',margin:'22px 0 12px'},
+    sec: {fontSize:'11px',fontWeight:700,letterSpacing:'.12em',color:C.muted,textTransform:'uppercase',margin:'22px 0 12px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(255,255,255,0.08)'},
     card: {background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',padding:'16px',marginBottom:'12px'},
     inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
     sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
