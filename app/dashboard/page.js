@@ -36,16 +36,27 @@ function fechaLabel() {
 
 function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimientosExistentes) {
   const fijos = [
-    {dia:5,  descripcion:'Sueldos',              monto:9340241, grupo:'sueldos'},
-    {dia:10, descripcion:'Alquiler Córdoba 695', monto:4090600, grupo:'alquileres'},
-    {dia:10, descripcion:'Alquiler Córdoba 642', monto:720000,  grupo:'alquileres'},
-    {dia:10, descripcion:'Alquiler San Juan 655',monto:1222619, grupo:'alquileres'},
-    {dia:15, descripcion:'Inversor',             monto:2160000, grupo:null},
+    {
+      dia: 5, descripcion: 'Sueldos', monto: 9340241,
+      yaExisteFn: (v, ms) => v.descripcion?.toLowerCase().includes('sueldo') && v.fecha.slice(0,7) === ms,
+    },
+    {
+      dia: 10, descripcion: 'Alquiler Córdoba 695', monto: 4090600,
+      yaExisteFn: (v, ms) => v.descripcion?.toLowerCase().includes('alquiler') && v.descripcion?.toLowerCase().includes('695') && v.fecha.slice(0,7) === ms,
+    },
+    {
+      dia: 10, descripcion: 'Alquiler Córdoba 642', monto: 720000,
+      yaExisteFn: (v, ms) => v.descripcion?.toLowerCase().includes('alquiler') && v.descripcion?.toLowerCase().includes('642') && v.fecha.slice(0,7) === ms,
+    },
+    {
+      dia: 10, descripcion: 'Alquiler San Juan 655', monto: 1222619,
+      yaExisteFn: (v, ms) => v.descripcion?.toLowerCase().includes('alquiler') && v.descripcion?.toLowerCase().includes('san juan') && v.fecha.slice(0,7) === ms,
+    },
+    {
+      dia: 15, descripcion: 'Inversor', monto: 2160000,
+      yaExisteFn: (v, ms) => v.descripcion?.toLowerCase().includes('inversor') && v.fecha.slice(0,7) === ms,
+    },
   ]
-  const coincide = {
-    sueldos:    v => v.descripcion.toLowerCase().includes('sueldo'),
-    alquileres: v => v.descripcion.toLowerCase().includes('alquiler') || v.descripcion.toLowerCase().includes('wifi'),
-  }
   const [iy,im,id] = fechaInicioStr.split('-').map(Number)
   const [fy,fm,fd] = fechaFinStr.split('-').map(Number)
   const inicio = new Date(iy, im-1, id)
@@ -56,14 +67,9 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
     for (const f of fijos) {
       const fecha = new Date(cur.getFullYear(), cur.getMonth(), f.dia)
       if (fecha >= inicio && fecha <= fin) {
-        // Verificar si ya existe un vencimiento manual del mismo tipo en ese mes
-        if (f.grupo && coincide[f.grupo]) {
-          const mesStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`
-          const yaExiste = (vencimientosExistentes||[]).some(v =>
-            v.fecha.slice(0,7) === mesStr && coincide[f.grupo](v)
-          )
-          if (yaExiste) continue
-        }
+        const mesStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`
+        const yaExiste = (vencimientosExistentes||[]).some(v => f.yaExisteFn(v, mesStr))
+        if (yaExiste) continue
         const y = fecha.getFullYear()
         const m = String(fecha.getMonth()+1).padStart(2,'0')
         const d = String(fecha.getDate()).padStart(2,'0')
