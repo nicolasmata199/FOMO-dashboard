@@ -226,7 +226,7 @@ export default function Dashboard() {
       const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
       const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
       setDatosHoy({...r, ventas_acumuladas_mes: ventas})
-      setFechaDatosHoy(r.fecha)
+      setFechaDatosHoy(rowsRecientes[0].fecha)  // siempre la fecha más reciente sin importar usuario
     }
   }
 
