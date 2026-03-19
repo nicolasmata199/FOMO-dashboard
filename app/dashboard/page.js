@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [acumData, setAcumData] = useState({efectivo:0,transferencias:0,saldoBanco:0,gastos:0})
   const [liquidoTotal, setLiquidoTotal] = useState(0)
   const [gastosFlujoData, setGastosFlujoData] = useState([])
+  const [tarjetaAcumulada, setTarjetaAcumulada] = useState(0)
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -165,7 +166,7 @@ export default function Dashboard() {
     const flIni = new Date(hY0,hM0,hD0-3), flFin = new Date(hY0,hM0,hD0+29)
     const flIniStr = `${flIni.getFullYear()}-${String(flIni.getMonth()+1).padStart(2,'0')}-${String(flIni.getDate()).padStart(2,'0')}`
     const flFinStr = `${flFin.getFullYear()}-${String(flFin.getMonth()+1).padStart(2,'0')}-${String(flFin.getDate()).padStart(2,'0')}`
-    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum, gFlujo] = await Promise.all([
+    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum, gFlujo, tPend] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado',false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa',true).order('monto',{ascending:false}),
       supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
@@ -179,6 +180,7 @@ export default function Dashboard() {
       supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
       supabase.from('gastos').select('fecha,monto,descripcion,categoria').gte('fecha',flIniStr).lte('fecha',flFinStr),
+      supabase.from('datos_diarios').select('tarjeta_pendiente,tarjeta_acreditada').eq('tarjeta_acreditada',false),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -189,6 +191,8 @@ export default function Dashboard() {
     if (ddReciente.data) setHistorialDias(ddReciente.data)
     if (vPagados.data) setVencPagados(vPagados.data)
     if (gFlujo.data) setGastosFlujoData(gFlujo.data)
+    const totalTarjetaPendiente = (tPend.data||[]).reduce((s,r) => s+(r.tarjeta_pendiente||0), 0)
+    setTarjetaAcumulada(totalTarjetaPendiente)
 
     // Cálculo de líquido acumulado
     const rowsAcum = ddAcum.data || []
@@ -386,8 +390,22 @@ export default function Dashboard() {
       .eq('fecha', fechaDatosHoy||hoyStr())
       .eq('usuario_id', userId)
     if (!error) {
+      // Registrar acreditación como entrada de banco en el día de hoy
+      const hoy = hoyStr()
+      const {data: rowHoy} = await supabase.from('datos_diarios')
+        .select('id,saldo_banco').eq('fecha',hoy).eq('usuario_id',userId).single()
+      if (rowHoy) {
+        await supabase.from('datos_diarios')
+          .update({ saldo_banco: (rowHoy.saldo_banco||0) + monto })
+          .eq('id', rowHoy.id)
+      } else {
+        await supabase.from('datos_diarios')
+          .upsert({ fecha:hoy, usuario_id:userId, usuario_nombre:usuario?.nombre, saldo_banco: monto },
+                  { onConflict:'fecha,usuario_id' })
+      }
       await logH('UPDATE', `Acreditación tarjeta: ${fmt(monto)} — ${usuario?.nombre} ${new Date().toLocaleString('es-AR')}`)
       setDatosHoy({...datosHoy, saldo_banco:nuevoSaldo, tarjeta_acreditada:true, tarjeta_monto_real:monto})
+      setTarjetaAcumulada(prev => Math.max(0, prev - monto))
       setTarjetaInputShow(false)
       setTarjetaMontoInput('')
       setMsg('✓ Acreditado')
@@ -465,7 +483,7 @@ export default function Dashboard() {
   const totalVentasDia = (datosDia.ventas_695||0) + (datosDia.ventas_642||0) + (datosDia.ventas_sanjuan||0)
   const ventasHoy = (datosHoy.efectivo||0) + (datosHoy.transferencias||0) + (datosHoy.cheque_recibido||0)
   const liquidoHoy = liquidoTotal  // estado directo — no derivado de acumData para evitar renders con snapshot viejo
-  const disponibleTotal = liquidoHoy + (datosHoy.tarjeta_pendiente||0)
+  const disponibleTotal = liquidoHoy
   const v3 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 3 })
   const tv3 = v3.reduce((s,v) => s+v.monto, 0)
   const v7 = vencimientos.filter(v => { const d = diasHasta(v.fecha); return d >= 0 && d <= 7 })
@@ -764,7 +782,7 @@ export default function Dashboard() {
           </div>
 
           {/* Tarjeta pendiente — card separada */}
-          {(datosHoy.tarjeta_pendiente||0) > 0 && (
+          {tarjetaAcumulada > 0 && (
             <div style={{...S.card,border:'1px solid rgba(245,166,35,0.35)',background:'rgba(245,166,35,0.05)'}}>
               {datosHoy.tarjeta_acreditada ? (
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -776,7 +794,8 @@ export default function Dashboard() {
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:tarjetaInputShow?'12px':'0'}}>
                     <div>
                       <div style={{fontSize:'12px',color:C.accent,fontWeight:700,marginBottom:'2px'}}>Tarjeta pendiente acreditación</div>
-                      <div style={{fontFamily:'monospace',fontSize:'16px',fontWeight:700,color:C.accent}}>{fmt(datosHoy.tarjeta_pendiente)}</div>
+                      <div style={{fontFamily:'monospace',fontSize:'16px',fontWeight:700,color:C.accent}}>{fmt(tarjetaAcumulada)}</div>
+                      <div style={{fontSize:'11px',color:C.muted}}>Acumulado de días sin acreditar</div>
                     </div>
                     {!tarjetaInputShow && (
                       <button onClick={()=>{setTarjetaInputShow(true);setTarjetaMontoInput(String(datosHoy.tarjeta_pendiente))}}
