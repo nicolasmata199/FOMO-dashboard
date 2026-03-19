@@ -115,7 +115,8 @@ export default function Dashboard() {
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
   const [modal, setModal] = useState('')
-  const [modalPago, setModalPago] = useState({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})
+  const MP0 = {venc:null,paso:1,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:'',medio:null,cuotas:1,cheques:[{monto:'',fecha:''}]}
+  const [modalPago, setModalPago] = useState(MP0)
   const [tarjetaInputShow, setTarjetaInputShow] = useState(false)
   const [tarjetaMontoInput, setTarjetaMontoInput] = useState('')
   const [mostrarPagados, setMostrarPagados] = useState(false)
@@ -291,33 +292,65 @@ export default function Dashboard() {
   }
 
   function abrirModalPago(v) {
-    setModalPago({venc:v, opcion:null, montoInput:String(v.monto), nuevoMonto:'', nuevaFecha:''})
+    setModalPago({...MP0, venc:v, montoInput:String(v.monto)})
     setModal('pago')
   }
 
   async function confirmarPago() {
-    const {venc, opcion, montoInput, nuevoMonto, nuevaFecha} = modalPago
+    const {venc, opcion, montoInput, nuevoMonto, nuevaFecha, medio, cuotas, cheques} = modalPago
     if (!venc || !opcion) return
     const supabase = getSupabase()
     const montoPagado = parseFloat(String(montoInput).replace(/\./g,'')) || venc.monto
     const ahora = new Date().toLocaleString('es-AR')
-    if (opcion === 'completo') {
-      await supabase.from('vencimientos').update({pagado:true, fecha_pago:hoyStr()}).eq('id',venc.id)
-      await supabase.from('gastos').insert({descripcion:`Pago completo: ${venc.descripcion}`, monto:montoPagado, fecha:hoyStr(), categoria:'otro', usuario_nombre:usuario?.nombre})
-      await logH('UPDATE', `Pago completo: ${venc.descripcion} ${fmt(montoPagado)} — ${usuario?.nombre} ${ahora}`)
-    } else if (opcion === 'parcial') {
-      const saldoRestante = parseFloat(String(nuevoMonto).replace(/\./g,'')) || Math.max(0, venc.monto - montoPagado)
-      await supabase.from('vencimientos').update({monto:saldoRestante, fecha:nuevaFecha||venc.fecha}).eq('id',venc.id)
-      await supabase.from('gastos').insert({descripcion:`Pago parcial: ${venc.descripcion}`, monto:montoPagado, fecha:hoyStr(), categoria:'otro', usuario_nombre:usuario?.nombre})
-      await logH('UPDATE', `Pago parcial: ${venc.descripcion} ${fmt(montoPagado)} pagado, saldo ${fmt(saldoRestante)} al ${nuevaFecha||venc.fecha} — ${usuario?.nombre} ${ahora}`)
-    } else if (opcion === 'fecha') {
+
+    // Caso especial: solo renegociación de fecha — sin paso 2
+    if (opcion === 'fecha') {
       if (!nuevaFecha) return
       await supabase.from('vencimientos').update({fecha:nuevaFecha}).eq('id',venc.id)
       await logH('UPDATE', `Fecha renegociada: ${venc.descripcion} → ${nuevaFecha} — ${usuario?.nombre}`)
+      setModal(''); setModalPago(MP0); await loadAll(); return
     }
-    setModal('')
-    setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})
-    await loadAll()
+
+    if (!medio) return
+
+    // Paso 1: actualizar el vencimiento original
+    if (opcion === 'completo') {
+      await supabase.from('vencimientos').update({pagado:true, fecha_pago:hoyStr()}).eq('id',venc.id)
+    } else if (opcion === 'parcial') {
+      const saldoRestante = parseFloat(String(nuevoMonto).replace(/\./g,'')) || Math.max(0, venc.monto - montoPagado)
+      await supabase.from('vencimientos').update({monto:saldoRestante, fecha:nuevaFecha||venc.fecha}).eq('id',venc.id)
+    }
+
+    // Paso 2: impacto según medio de pago
+    if (medio === 'efectivo' || medio === 'transferencia' || medio === 'banco') {
+      const campo = medio === 'efectivo' ? 'efectivo' : medio === 'transferencia' ? 'transferencias' : 'saldo_banco'
+      const {data: rowHoy} = await supabase.from('datos_diarios').select('id,efectivo,transferencias,saldo_banco').eq('fecha',hoyStr()).eq('usuario_id',userId).single()
+      if (rowHoy) {
+        await supabase.from('datos_diarios').update({[campo]: (rowHoy[campo]||0) - montoPagado}).eq('id',rowHoy.id)
+      } else {
+        await supabase.from('datos_diarios').upsert({fecha:hoyStr(), usuario_id:userId, usuario_nombre:usuario?.nombre, [campo]: -montoPagado}, {onConflict:'fecha,usuario_id'})
+      }
+    } else if (medio === 'cheque') {
+      for (const ch of cheques) {
+        const montoChq = parseFloat(String(ch.monto).replace(/\./g,'')) || 0
+        if (montoChq > 0 && ch.fecha) {
+          await supabase.from('vencimientos').insert({descripcion:`Cheque emitido — ${venc.descripcion}`, monto:montoChq, fecha:ch.fecha, tipo:'cheque', pagado:false, usuario_nombre:usuario?.nombre})
+        }
+      }
+    } else if (medio === 'tarjeta' && cuotas > 1) {
+      const montoCuota = Math.round(montoPagado / cuotas)
+      const [hy,hm,hd] = hoyStr().split('-').map(Number)
+      for (let i = 1; i <= cuotas; i++) {
+        const fc = new Date(hy, hm-1, hd + i*30)
+        const fs = `${fc.getFullYear()}-${String(fc.getMonth()+1).padStart(2,'0')}-${String(fc.getDate()).padStart(2,'0')}`
+        await supabase.from('vencimientos').insert({descripcion:`Cuota tarjeta ${i}/${cuotas} — ${venc.descripcion}`, monto:montoCuota, fecha:fs, tipo:'tarjeta', pagado:false, usuario_nombre:usuario?.nombre})
+      }
+    }
+
+    const medioLabel = {efectivo:'Efectivo',transferencia:'Transferencia',banco:'Banco',cheque:'Cheque emitido',tarjeta:'Tarjeta'}[medio]
+    const cuotasLabel = medio === 'tarjeta' ? ` (${cuotas} cuota${cuotas>1?'s':''})` : ''
+    await logH('UPDATE', `Pago: ${venc.descripcion} ${fmt(montoPagado)} via ${medioLabel}${cuotasLabel} — ${usuario?.nombre} ${ahora}`)
+    setModal(''); setModalPago(MP0); await loadAll()
   }
 
   async function acreditarTarjeta() {
@@ -1292,34 +1325,39 @@ export default function Dashboard() {
 
       {/* MODAL PAGO */}
       {modal === 'pago' && modalPago.venc && (
-        <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.80)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e=>{if(e.target===e.currentTarget){setModal('');setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})}}}>
-          <div style={{background:C.card,borderRadius:'20px',padding:'24px 20px',width:'100%',maxWidth:'460px',border:'1px solid rgba(255,255,255,0.13)'}}>
-            <h3 style={{fontSize:'15px',fontWeight:700,marginBottom:'4px',color:C.text}}>Registrar pago</h3>
-            <p style={{fontSize:'12px',color:C.muted,marginBottom:'18px',fontFamily:'monospace'}}>{modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}</p>
+        <div className="fomo-modal-wrap" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.82)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e=>{if(e.target===e.currentTarget){setModal('');setModalPago(MP0)}}}>
+          <div style={{background:C.card,borderRadius:'20px',padding:'24px 20px',width:'100%',maxWidth:'460px',border:'1px solid rgba(255,255,255,0.13)',maxHeight:'90vh',overflowY:'auto'}}>
+            {/* Header */}
+            <div style={{marginBottom:'16px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <h3 style={{fontSize:'15px',fontWeight:700,color:C.text,margin:0}}>Registrar pago</h3>
+                <span style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',background:C.inputBg,padding:'3px 8px',borderRadius:'6px'}}>
+                  {modalPago.paso === 1 ? 'Paso 1 — Tipo' : 'Paso 2 — Medio'}
+                </span>
+              </div>
+              <p style={{fontSize:'12px',color:C.muted,marginTop:'4px',fontFamily:'monospace'}}>{modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}</p>
+            </div>
 
-            {/* Selector de opción */}
-            {!modalPago.opcion && (
+            {/* PASO 1: selector tipo */}
+            {modalPago.paso === 1 && !modalPago.opcion && (
               <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
                 {[
-                  {id:'completo',label:'Pago completo',desc:'Marcar como pagado y registrar salida',color:'rgba(52,211,153,0.12)',border:'rgba(52,211,153,0.3)',textColor:C.green},
-                  {id:'parcial',label:'Pago parcial',desc:'Pagar una parte, actualizar saldo y fecha',color:'rgba(245,166,35,0.08)',border:'rgba(245,166,35,0.3)',textColor:C.accent},
-                  {id:'fecha',label:'Renegocié la fecha',desc:'Solo mover la fecha de vencimiento',color:'rgba(96,165,250,0.08)',border:'rgba(96,165,250,0.25)',textColor:C.blue},
-                ].map(op => (
+                  {id:'completo',label:'Pago completo',desc:'Marcar como pagado',color:'rgba(52,211,153,0.12)',border:'rgba(52,211,153,0.3)',tc:C.green},
+                  {id:'parcial',label:'Pago parcial',desc:'Pagar una parte, actualizar saldo y fecha',color:'rgba(245,166,35,0.08)',border:'rgba(245,166,35,0.3)',tc:C.accent},
+                  {id:'fecha',label:'Renegocié la fecha',desc:'Solo mover la fecha, sin pago',color:'rgba(96,165,250,0.08)',border:'rgba(96,165,250,0.25)',tc:C.blue},
+                ].map(op=>(
                   <button key={op.id} onClick={()=>setModalPago({...modalPago,opcion:op.id})}
                     style={{background:op.color,border:`1px solid ${op.border}`,borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
-                    <div style={{fontSize:'14px',fontWeight:700,color:op.textColor,marginBottom:'2px'}}>{op.label}</div>
+                    <div style={{fontSize:'14px',fontWeight:700,color:op.tc,marginBottom:'2px'}}>{op.label}</div>
                     <div style={{fontSize:'11px',color:C.muted}}>{op.desc}</div>
                   </button>
                 ))}
-                <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:C.muted,marginTop:'4px'}}
-                  onClick={()=>{setModal('');setModalPago({venc:null,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:''})}}>
-                  Cancelar
-                </button>
+                <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:C.muted,marginTop:'4px'}} onClick={()=>{setModal('');setModalPago(MP0)}}>Cancelar</button>
               </div>
             )}
 
-            {/* Pago completo */}
-            {modalPago.opcion === 'completo' && (
+            {/* PASO 1: formulario completo */}
+            {modalPago.paso === 1 && modalPago.opcion === 'completo' && (
               <div>
                 <div style={{marginBottom:'12px'}}>
                   <label style={S.label}>Monto pagado ($)</label>
@@ -1329,13 +1367,13 @@ export default function Dashboard() {
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                   <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
-                  <button style={S.btn} onClick={confirmarPago}>✓ Confirmar pago</button>
+                  <button style={S.btn} onClick={()=>setModalPago({...modalPago,paso:2})}>Continuar →</button>
                 </div>
               </div>
             )}
 
-            {/* Pago parcial */}
-            {modalPago.opcion === 'parcial' && (
+            {/* PASO 1: formulario parcial */}
+            {modalPago.paso === 1 && modalPago.opcion === 'parcial' && (
               <div>
                 <div style={{marginBottom:'10px'}}>
                   <label style={S.label}>Monto pagado hoy ($)</label>
@@ -1351,29 +1389,174 @@ export default function Dashboard() {
                 </div>
                 <div style={{marginBottom:'12px'}}>
                   <label style={S.label}>Nueva fecha de vencimiento</label>
-                  <input type="date" style={{...S.inp,fontSize:'14px'}}
-                    value={modalPago.nuevaFecha}
-                    onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
+                  <input type="date" style={{...S.inp,fontSize:'14px'}} value={modalPago.nuevaFecha} onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                   <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
-                  <button style={{...S.btn,background:'rgba(245,166,35,0.15)',border:'1px solid rgba(245,166,35,0.4)',color:C.accent}} onClick={confirmarPago}>✓ Registrar parcial</button>
+                  <button style={{...S.btn,background:'rgba(245,166,35,0.15)',border:'1px solid rgba(245,166,35,0.4)',color:C.accent}} onClick={()=>setModalPago({...modalPago,paso:2})}>Continuar →</button>
                 </div>
               </div>
             )}
 
-            {/* Renegociar fecha */}
-            {modalPago.opcion === 'fecha' && (
+            {/* PASO 1: renegociar fecha — sin paso 2 */}
+            {modalPago.paso === 1 && modalPago.opcion === 'fecha' && (
               <div>
                 <div style={{marginBottom:'12px'}}>
                   <label style={S.label}>Nueva fecha de vencimiento</label>
-                  <input type="date" style={{...S.inp,fontSize:'14px'}}
-                    value={modalPago.nuevaFecha}
-                    onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
+                  <input type="date" style={{...S.inp,fontSize:'14px'}} value={modalPago.nuevaFecha} onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                   <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
                   <button style={{...S.btn,background:'rgba(96,165,250,0.12)',border:'1px solid rgba(96,165,250,0.3)',color:C.blue}} onClick={confirmarPago}>✓ Actualizar fecha</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: selector medio de pago */}
+            {modalPago.paso === 2 && !modalPago.medio && (
+              <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                <p style={{fontSize:'12px',color:C.muted,fontFamily:'monospace',marginBottom:'4px'}}>¿Cómo pagás {fmt(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto)}?</p>
+                {[
+                  {id:'efectivo',label:'Efectivo',desc:'Descuenta del efectivo de hoy',icon:'💵'},
+                  {id:'transferencia',label:'Transferencia',desc:'Descuenta de las transferencias de hoy',icon:'📲'},
+                  {id:'banco',label:'Banco',desc:'Débito directo de cuenta bancaria',icon:'🏦'},
+                  {id:'cheque',label:'Cheque emitido',desc:'Sin impacto hoy — aparece en FLUJO',icon:'📝'},
+                  {id:'tarjeta',label:'Tarjeta',desc:'Sin impacto hoy — cuotas en FLUJO',icon:'💳'},
+                ].map(op=>(
+                  <button key={op.id} onClick={()=>setModalPago({...modalPago,medio:op.id})}
+                    style={{display:'flex',alignItems:'center',gap:'12px',background:C.inputBg,border:`1px solid ${C.cardBorder}`,borderRadius:'12px',padding:'13px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                    <span style={{fontSize:'20px'}}>{op.icon}</span>
+                    <div>
+                      <div style={{fontSize:'14px',fontWeight:700,color:C.text,marginBottom:'1px'}}>{op.label}</div>
+                      <div style={{fontSize:'11px',color:C.muted}}>{op.desc}</div>
+                    </div>
+                  </button>
+                ))}
+                <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:C.muted,marginTop:'4px'}} onClick={()=>setModalPago({...modalPago,paso:1,medio:null})}>← Volver</button>
+              </div>
+            )}
+
+            {/* PASO 2: efectivo / transferencia / banco — confirmar */}
+            {modalPago.paso === 2 && (modalPago.medio==='efectivo'||modalPago.medio==='transferencia'||modalPago.medio==='banco') && (
+              <div>
+                <div style={{background:C.inputBg,borderRadius:'12px',padding:'14px 16px',marginBottom:'16px'}}>
+                  <div style={{fontSize:'12px',color:C.muted,marginBottom:'4px'}}>Impacto inmediato en caja</div>
+                  <div style={{fontSize:'14px',fontWeight:700,color:C.red}}>
+                    −{fmt(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto)}
+                    <span style={{fontWeight:400,color:C.muted,fontSize:'12px',marginLeft:'8px'}}>
+                      de {modalPago.medio==='efectivo'?'Efectivo':modalPago.medio==='transferencia'?'Transferencias':'Saldo banco'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,medio:null})}>← Volver</button>
+                  <button style={S.btn} onClick={confirmarPago}>✓ Confirmar pago</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: cheque emitido */}
+            {modalPago.paso === 2 && modalPago.medio === 'cheque' && (
+              <div>
+                <div style={{marginBottom:'14px'}}>
+                  <label style={S.label}>¿Cuántos cheques?</label>
+                  <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                    {[1,2,3].map(n=>(
+                      <button key={n} onClick={()=>setModalPago({...modalPago,cheques:Array.from({length:n},()=>({monto:'',fecha:''}))})}
+                        style={{padding:'8px 18px',borderRadius:'8px',border:'1px solid',fontSize:'14px',fontWeight:700,cursor:'pointer',
+                          borderColor:modalPago.cheques.length===n?C.green:'rgba(255,255,255,0.15)',
+                          background:modalPago.cheques.length===n?'rgba(52,211,153,0.15)':C.inputBg,
+                          color:modalPago.cheques.length===n?C.green:C.label}}>
+                        {n}
+                      </button>
+                    ))}
+                    <button onClick={()=>setModalPago({...modalPago,cheques:[...modalPago.cheques,{monto:'',fecha:''}]})}
+                      style={{padding:'8px 16px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:C.inputBg,color:C.label,fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+                      +
+                    </button>
+                  </div>
+                </div>
+                {modalPago.cheques.map((ch,j)=>(
+                  <div key={j} style={{background:C.inputBg,borderRadius:'10px',padding:'12px',marginBottom:'8px'}}>
+                    <div style={{fontSize:'11px',color:C.accent,fontWeight:700,marginBottom:'8px'}}>Cheque {j+1}</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                      <div>
+                        <label style={{...S.label,marginBottom:'4px'}}>Monto ($)</label>
+                        <input type="text" inputMode="numeric" style={{...S.inp,fontSize:'14px'}}
+                          value={ch.monto?fmtInput(parseFloat(String(ch.monto).replace(/\./g,''))||0):''}
+                          placeholder="0"
+                          onChange={e=>{const nc=[...modalPago.cheques]; nc[j]={...nc[j],monto:e.target.value.replace(/\./g,'')}; setModalPago({...modalPago,cheques:nc})}}/>
+                      </div>
+                      <div>
+                        <label style={{...S.label,marginBottom:'4px'}}>Fecha cobro</label>
+                        <input type="date" style={{...S.inp,fontSize:'13px'}}
+                          value={ch.fecha}
+                          onChange={e=>{const nc=[...modalPago.cheques]; nc[j]={...nc[j],fecha:e.target.value}; setModalPago({...modalPago,cheques:nc})}}/>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(() => {
+                  const totalChq = modalPago.cheques.reduce((s,c)=>s+(parseFloat(String(c.monto).replace(/\./g,''))||0),0)
+                  const esperado = parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto
+                  const diff = totalChq - esperado
+                  return totalChq > 0 && (
+                    <div style={{fontSize:'11px',fontFamily:'monospace',padding:'8px 12px',borderRadius:'8px',marginBottom:'12px',
+                      background:Math.abs(diff)<1?'rgba(52,211,153,0.1)':'rgba(245,166,35,0.1)',
+                      color:Math.abs(diff)<1?C.green:C.accent}}>
+                      Total cheques: {fmt(totalChq)} / Esperado: {fmt(esperado)}
+                      {Math.abs(diff)>=1 && ` (diferencia: ${diff>0?'+':''}${fmt(diff)})`}
+                    </div>
+                  )
+                })()}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,medio:null})}>← Volver</button>
+                  <button style={S.btn} onClick={confirmarPago}>✓ Emitir cheques</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: tarjeta en cuotas */}
+            {modalPago.paso === 2 && modalPago.medio === 'tarjeta' && (
+              <div>
+                <div style={{marginBottom:'16px'}}>
+                  <label style={S.label}>Cantidad de cuotas</label>
+                  <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                    {[1,3,6,9,12].map(n=>(
+                      <button key={n} onClick={()=>setModalPago({...modalPago,cuotas:n})}
+                        style={{padding:'10px 16px',borderRadius:'8px',border:'1px solid',fontSize:'14px',fontWeight:700,cursor:'pointer',flex:1,
+                          borderColor:modalPago.cuotas===n?C.accent:'rgba(255,255,255,0.15)',
+                          background:modalPago.cuotas===n?'rgba(245,224,0,0.12)':C.inputBg,
+                          color:modalPago.cuotas===n?C.accent:C.label}}>
+                        {n}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {(() => {
+                  const total = parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto
+                  const cuota = Math.round(total / modalPago.cuotas)
+                  const [hy,hm,hd] = hoyStr().split('-').map(Number)
+                  return (
+                    <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px',marginBottom:'16px',fontSize:'12px',fontFamily:'monospace'}}>
+                      {modalPago.cuotas===1 ? (
+                        <div style={{color:C.green}}>Pago único — sin vencimientos futuros</div>
+                      ) : (
+                        <>
+                          <div style={{color:C.muted,marginBottom:'6px'}}>{modalPago.cuotas} cuotas de {fmt(cuota)}</div>
+                          {Array.from({length:Math.min(modalPago.cuotas,3)},(_,i)=>{
+                            const fc=new Date(hy,hm-1,hd+(i+1)*30)
+                            return <div key={i} style={{color:C.label,lineHeight:1.8}}>→ {fc.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})} — {fmt(cuota)}</div>
+                          })}
+                          {modalPago.cuotas>3 && <div style={{color:C.muted}}>… y {modalPago.cuotas-3} cuotas más</div>}
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,medio:null})}>← Volver</button>
+                  <button style={S.btn} onClick={confirmarPago}>✓ Confirmar</button>
                 </div>
               </div>
             )}
