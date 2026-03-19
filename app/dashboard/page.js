@@ -179,7 +179,7 @@ export default function Dashboard() {
       supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
-      supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
+      supabase.from('datos_diarios').select('*').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
       supabase.from('gastos').select('fecha,monto,descripcion,categoria').gte('fecha',flIniStr).lte('fecha',flFinStr),
       supabase.from('datos_diarios').select('tarjeta_pendiente,tarjeta_acreditada').eq('tarjeta_acreditada',false).gt('tarjeta_pendiente',0),
