@@ -181,7 +181,7 @@ export default function Dashboard() {
       supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
       supabase.from('gastos').select('fecha,monto,descripcion,categoria').gte('fecha',flIniStr).lte('fecha',flFinStr),
-      supabase.from('datos_diarios').select('tarjeta_pendiente,tarjeta_acreditada').eq('tarjeta_acreditada',false),
+      supabase.from('datos_diarios').select('tarjeta_pendiente,tarjeta_acreditada').eq('tarjeta_acreditada',false).gt('tarjeta_pendiente',0),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -190,6 +190,10 @@ export default function Dashboard() {
     if (s.data) setStock(s.data)
     if (h.data) setHistorial(h.data)
     if (ddReciente.data) setHistorialDias(ddReciente.data)
+    const rowsRecientes0 = ddReciente.data || []
+    if (rowsRecientes0.length > 0) {
+      setFechaDatosHoy(rowsRecientes0[0].fecha)
+    }
     if (vPagados.data) setVencPagados(vPagados.data)
     if (gFlujo.data) setGastosFlujoData(gFlujo.data)
     const totalTarjetaPendiente = (tPend.data||[]).reduce((s,r) => s+(r.tarjeta_pendiente||0), 0)
@@ -618,6 +622,11 @@ export default function Dashboard() {
   const S = {
     page: {padding:'16px 16px 90px',fontFamily:"'Syne',sans-serif"},
     sec: {fontSize:'11px',fontWeight:700,letterSpacing:'.12em',color:C.muted,textTransform:'uppercase',margin:'22px 0 12px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(255,255,255,0.08)'},
+    secVentas: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#3ddc84',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(61,220,132,0.2)'},
+    secCaja: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#5b9fff',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(91,159,255,0.2)'},
+    secAjuste: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#a78bfa',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(167,139,250,0.2)'},
+    secPago: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#f5a623',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(245,166,35,0.2)'},
+    secGasto: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#ff5050',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(255,80,80,0.2)'},
     card: {background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',padding:'16px',marginBottom:'12px'},
     inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
     sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
@@ -883,7 +892,7 @@ export default function Dashboard() {
       {tab === 'cargar' && (
         <div className="fomo-content" style={S.page}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'4px'}}>
-            <div style={S.sec}>Datos del día</div>
+            <div style={S.secVentas}>Datos del día</div>
             <input type="date" style={{background:C.inputBg,border:`1px solid ${C.cardBorder}`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'13px',padding:'8px 12px',outline:'none',cursor:'pointer'}}
               value={fechaCarga}
               onChange={e => { setFechaCarga(e.target.value); cargarFecha(e.target.value) }}
@@ -914,7 +923,7 @@ export default function Dashboard() {
           ))}
 
           {/* Ventas por sucursal */}
-          <div style={S.sec}>Ventas del día por sucursal</div>
+          <div style={S.secVentas}>Ventas del día por sucursal</div>
           <div style={S.card}>
             {[
               {label:'Ventas Córdoba 695 — hoy ($)', key:'ventas_695'},
@@ -944,7 +953,7 @@ export default function Dashboard() {
             <input type="text" style={S.inp} placeholder="ej: día lento, falta stock..."
               value={datosDia.notas||''} onChange={e => setDatosDia({...datosDia, notas:e.target.value})}/>
           </div>
-          <div style={S.sec}>Ajuste de caja</div>
+          <div style={S.secAjuste}>Ajuste de caja</div>
           <div style={S.card}>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
               <div>
@@ -974,7 +983,7 @@ export default function Dashboard() {
           </button>
 
           {/* Pago de sucursal */}
-          <div style={S.sec}>Registrar pago de sucursal</div>
+          <div style={S.secPago}>Registrar pago de sucursal</div>
           <div style={S.card}>
             <div style={{marginBottom:'10px'}}>
               <label style={S.label}>Sucursal</label>
@@ -1011,7 +1020,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div style={S.sec}>Registrar gasto del día</div>
+          <div style={S.secGasto}>Registrar gasto del día</div>
           <div style={S.card}>
             <label style={S.label}>Descripción</label>
             <input type="text" style={{...S.inp,marginBottom:'10px'}} placeholder="ej: Pago proveedor fundas"
@@ -1045,7 +1054,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div style={S.sec}>Registrar cambio de dinero</div>
+          <div style={S.secCaja}>Registrar cambio de dinero</div>
           <div style={S.card}>
             <label style={S.label}>Tipo de cambio</label>
             <select style={{...S.sel,marginBottom:'10px'}} value={fCambio.tipo} onChange={e=>setFCambio({...fCambio,tipo:e.target.value})}>
