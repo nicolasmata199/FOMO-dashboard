@@ -118,6 +118,7 @@ export default function Dashboard() {
   const [modalPago, setModalPago] = useState(MP0)
   const [tarjetaInputShow, setTarjetaInputShow] = useState(false)
   const [tarjetaMontoInput, setTarjetaMontoInput] = useState('')
+  const [modalDetalle, setModalDetalle] = useState({tipo:'',open:false})
   const [mostrarPagados, setMostrarPagados] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -229,7 +230,8 @@ export default function Dashboard() {
       const r = rowsHoy.find(x => x.usuario_id === currentUid) || rowsHoy[0]
       const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
       setDatosHoy({...r, ventas_acumuladas_mes: ventas})
-      setFechaDatosHoy(hoyStr())
+      const tieneDataReal = (r.efectivo||0) > 0 || (r.transferencias||0) > 0 || (r.ventas_695||0) > 0 || (r.ventas_642||0) > 0 || (r.ventas_sanjuan||0) > 0
+      setFechaDatosHoy(tieneDataReal ? hoyStr() : (rowsRecientes.length > 0 ? rowsRecientes[0].fecha : hoyStr()))
     } else if (rowsRecientes.length > 0) {
       const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
       const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
@@ -355,7 +357,7 @@ export default function Dashboard() {
     // Paso 2: impacto según medio de pago
     if (medio === 'efectivo' || medio === 'transferencia' || medio === 'banco') {
       const campo = medio === 'efectivo' ? 'efectivo' : medio === 'transferencia' ? 'transferencias' : 'saldo_banco'
-      const {data: rowHoy} = await supabase.from('datos_diarios').select('id,efectivo,transferencias,saldo_banco').eq('fecha',hoyStr()).eq('usuario_id',userId).single()
+      const {data: rowHoy} = await supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()).eq('usuario_id',userId).single()
       if (rowHoy) {
         await supabase.from('datos_diarios').update({[campo]: (rowHoy[campo]||0) - montoPagado}).eq('id',rowHoy.id)
       } else {
@@ -776,15 +778,15 @@ export default function Dashboard() {
         <div className="fomo-content" style={S.page}>
           <div className="fomo-metrics-grid" style={{marginBottom:'14px'}}>
             {[
-              {label:'VENTAS HOY',val:fechaDatosHoy===hoyStr()?fmt(ventasHoy):'$0',color:fechaDatosHoy===hoyStr()?colorVentas:C.muted,sub:fechaDatosHoy===hoyStr()?`${pctObj}% del objetivo`:'Sin carga de hoy',prog:fechaDatosHoy===hoyStr()?pctObj:0},
-              {label:'LÍQUIDO HOY',val:fmt(liquidoHoy),color:'#4ade80',sub:'efectivo + transf. + banco',prog:0},
-              {label:'VENCE 7 DÍAS',val:fmt(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
-              {label:'MES ACTUAL',val:fmt(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
+              {label:'VENTAS HOY',tipo:'ventas',val:fechaDatosHoy===hoyStr()?fmt(ventasHoy):'$0',color:fechaDatosHoy===hoyStr()?colorVentas:C.muted,sub:fechaDatosHoy===hoyStr()?`${pctObj}% del objetivo`:'Sin carga de hoy',prog:fechaDatosHoy===hoyStr()?pctObj:0},
+              {label:'LÍQUIDO HOY',tipo:'liquido',val:fmt(liquidoHoy),color:'#4ade80',sub:'efectivo + transf. + banco',prog:0},
+              {label:'VENCE 7 DÍAS',tipo:'vence7',val:fmt(tv7),color:C.red,sub:`${v7.length} obligacion(es)`,prog:0},
+              {label:'MES ACTUAL',tipo:'mes',val:fmt(ventasMes||datosHoy.ventas_acumuladas_mes||0),color:C.blue,sub:`${new Date().getDate()} días`,prog:0},
             ].map((k,i) => (
               <div key={i} className="fomo-metric-card" style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',marginBottom:0}}>
                 <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:k.color,opacity:.9}}/>
                 <div className="fomo-metric-label" style={{color:C.label}}>{k.label}</div>
-                <div className="fomo-metric-value" style={{color:k.color}}>{k.val}</div>
+                <div className="fomo-metric-value" style={{color:k.color,cursor:'pointer'}} onClick={()=>setModalDetalle({tipo:k.tipo,open:true})}>{k.val}</div>
                 <div className="fomo-metric-sub" style={{color:C.muted}}>{k.sub}</div>
                 {k.prog > 0 && <div style={{background:C.inputBg,borderRadius:'4px',height:'4px',marginTop:'10px',overflow:'hidden'}}><div style={{height:'100%',borderRadius:'4px',background:k.color,width:k.prog+'%',transition:'width .4s'}}/></div>}
               </div>
@@ -878,8 +880,8 @@ export default function Dashboard() {
             {historial.slice(0,5).map((h,i) => (
               <div key={i} style={{...S.row,...(i===4?{borderBottom:'none'}:{})}}>
                 <div>
-                  <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre} </span>
                   <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
+                  <div style={{fontSize:'10px',color:C.muted,marginTop:'2px'}}>{h.usuario_nombre}</div>
                 </div>
                 <span style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</span>
               </div>
@@ -1806,6 +1808,55 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {modalDetalle.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}} onClick={()=>setModalDetalle({tipo:'',open:false})}>
+          <div style={{background:C.card,borderRadius:'16px',padding:'20px',width:'100%',maxWidth:'340px',border:'1px solid rgba(255,255,255,0.12)'}} onClick={e=>e.stopPropagation()}>
+            {modalDetalle.tipo==='liquido' && <>
+              <div style={{fontWeight:700,fontSize:'14px',marginBottom:'16px',fontFamily:"'Syne',sans-serif"}}>Posición de caja</div>
+              {[
+                {l:'Efectivo acumulado', v:acumData.efectivo, c:'#3ddc84'},
+                {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
+                {l:'Saldo banco', v:acumData.saldoBanco, c:'#3ddc84'},
+                {l:'Gastos', v:-acumData.gastos, c:C.red},
+              ].map((r,i)=>(
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span></div>
+              ))}
+            </>}
+            {modalDetalle.tipo==='ventas' && <>
+              <div style={{fontWeight:700,fontSize:'14px',marginBottom:'16px',fontFamily:"'Syne',sans-serif"}}>Ventas de hoy</div>
+              {[
+                {l:'Sucursal 695', v:datosHoy.ventas_695||0},
+                {l:'Sucursal 642', v:datosHoy.ventas_642||0},
+                {l:'San Juan', v:datosHoy.ventas_sanjuan||0},
+              ].map((r,i)=>(
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px'}}>{fmt(r.v)}</span></div>
+              ))}
+            </>}
+            {modalDetalle.tipo==='mes' && <>
+              <div style={{fontWeight:700,fontSize:'14px',marginBottom:'16px',fontFamily:"'Syne',sans-serif"}}>Ventas del mes por sucursal</div>
+              {(()=>{
+                const mesStr=hoyStr().slice(0,7)
+                return [
+                  {l:'Sucursal 695', v:(historialDias||[]).filter(r=>r.fecha?.startsWith(mesStr)).reduce((s,r)=>s+(r.ventas_695||0),0)},
+                  {l:'Sucursal 642', v:(historialDias||[]).filter(r=>r.fecha?.startsWith(mesStr)).reduce((s,r)=>s+(r.ventas_642||0),0)},
+                  {l:'San Juan', v:(historialDias||[]).filter(r=>r.fecha?.startsWith(mesStr)).reduce((s,r)=>s+(r.ventas_sanjuan||0),0)},
+                ].map((r,i)=>(
+                  <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px'}}>{fmt(r.v)}</span></div>
+                ))
+              })()}
+            </>}
+            {modalDetalle.tipo==='vence7' && <>
+              <div style={{fontWeight:700,fontSize:'14px',marginBottom:'16px',fontFamily:"'Syne',sans-serif"}}>Vencimientos próximos 7 días</div>
+              {v7.map((v,i)=>(
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{v.descripcion} <span style={{color:C.muted,fontSize:'11px'}}>{v.fecha.split('-').reverse().join('/')}</span></span><span style={{fontFamily:'monospace',fontSize:'13px',color:C.red}}>{fmt(v.monto)}</span></div>
+              ))}
+              {v7.length===0 && <p style={{color:C.muted,fontSize:'13px',textAlign:'center',padding:'12px 0'}}>Sin vencimientos</p>}
+            </>}
+            <button style={{...S.btn,marginTop:'18px'}} onClick={()=>setModalDetalle({tipo:'',open:false})}>Cerrar</button>
           </div>
         </div>
       )}
