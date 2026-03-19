@@ -1229,7 +1229,7 @@ export default function Dashboard() {
 
           {promedioEntradas === 0 && (
             <div style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'11px 14px',marginBottom:'14px',fontSize:'12px',color:C.accent,fontFamily:'monospace',lineHeight:1.6}}>
-              ⚠ Sin datos históricos — las entradas estimadas aparecen en $0 hasta que cargues ventas diarias.
+              ⚠ Sin ventas diarias cargadas — las entradas estimadas aparecen en $0. Cargá ventas por sucursal para mejorar la proyección.
             </div>
           )}
           <div style={{overflowX:'auto'}}>
