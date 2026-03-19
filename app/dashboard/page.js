@@ -74,17 +74,12 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
   }
   return result
 }
-function calcularPromedio7d(historialDias) {
-  // Solo registros con ventas reales: > 0 y < 5.000.000 (excluye acumulados del mes)
-  const diasValidos = historialDias.filter(d => {
-    const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
-    return total > 0 && total < 5000000
-  })
-  const count = diasValidos.length
-  if (count < 7) return { promedio: 0, basadoEn: count, faltanDias: 7 - count }
-  const ultimos7 = diasValidos.sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 7)
-  const total = ultimos7.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
-  return { promedio: Math.round(total / 7), basadoEn: 7, faltanDias: 0 }
+const FLUJO_DEFAULT = 500000
+function ventasRealesDia(historialDias, fechaStr) {
+  const d = historialDias.find(r => r.fecha === fechaStr)
+  if (!d) return null
+  const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
+  return (total > 0 && total < 5000000) ? total : null
 }
 
 export default function Dashboard() {
@@ -482,11 +477,13 @@ export default function Dashboard() {
   const diasDelMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
 
   // Flujo 33 días (hoy-3 a hoy+29)
-  const { promedio: promedioEntradas, basadoEn: diasPromedio, faltanDias } = calcularPromedio7d(historialDias)
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
   const hoyBase = new Date()
   const hY = hoyBase.getFullYear(), hM = hoyBase.getMonth(), hD = hoyBase.getDate()
+  const hoyStr0 = `${hY}-${String(hM+1).padStart(2,'0')}-${String(hD).padStart(2,'0')}`
+  const ayerDate = new Date(hY, hM, hD - 1)
+  const ayerStr = `${ayerDate.getFullYear()}-${String(ayerDate.getMonth()+1).padStart(2,'0')}-${String(ayerDate.getDate()).padStart(2,'0')}`
   const d_m3 = new Date(hY, hM, hD - 3), d_p29 = new Date(hY, hM, hD + 29)
   const flujoInicioStr = `${d_m3.getFullYear()}-${String(d_m3.getMonth()+1).padStart(2,'0')}-${String(d_m3.getDate()).padStart(2,'0')}`
   const flujoFinStr    = `${d_p29.getFullYear()}-${String(d_p29.getMonth()+1).padStart(2,'0')}-${String(d_p29.getDate()).padStart(2,'0')}`
@@ -499,12 +496,20 @@ export default function Dashboard() {
   for (let i = -3; i <= 29; i++) {
     const fecha = new Date(hY, hM, hD + i)
     const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
-    const esPasado = i < 0
+    const esPasado = fechaStr < ayerStr   // antes de ayer
+    const esAyer   = fechaStr === ayerStr
+    const esHoy    = fechaStr === hoyStr0
     const esDomingo = fecha.getDay() === 0
-    // Entradas: 0 para pasados, 0 para hoy/futuro si promedio no activado, promedio si activado
-    const entradas = (!esDomingo && i > 0 && promedioEntradas > 0) ? promedioEntradas : 0
+    let entradas = 0
+    if (!esDomingo) {
+      const reales = ventasRealesDia(historialDias, fechaStr)
+      if (esPasado)       entradas = reales ?? 0
+      else if (esAyer)    entradas = reales ?? FLUJO_DEFAULT
+      else if (esHoy)     entradas = reales ?? FLUJO_DEFAULT
+      else                entradas = FLUJO_DEFAULT   // futuro
+    }
     let vencDia, fijosDia, todasSalidas
-    if (esPasado) {
+    if (esPasado || esAyer) {
       vencDia = todosVencimientosMap[fechaStr] || []
       fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
       todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
@@ -520,7 +525,7 @@ export default function Dashboard() {
       entradas, salidas, vencDia, todasSalidas,
       cajaDia: entradas - salidas,
       acumulado: Math.round(acumFlujo),
-      esPasado,
+      esPasado: esPasado || esAyer,
     })
   }
   const diasRojo = tablaFlujo.filter(r => !r.esPasado && r.acumulado < 0).length
@@ -1208,20 +1213,16 @@ export default function Dashboard() {
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:'22px',fontWeight:800,color:C.blue}}>{fmt(liquidoHoy)}</div>
               </div>
               <div style={{textAlign:'right'}}>
-                <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Promedio diario</div>
-                <div style={{fontFamily:'monospace',fontSize:'15px',color:promedioEntradas>0?C.green:C.accent}}>{fmt(promedioEntradas)}</div>
-                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{promedioEntradas > 0 ? `basado en ${diasPromedio} días` : `${diasPromedio}/7 días cargados`}</div>
+                <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Estimado diario</div>
+                <div style={{fontFamily:'monospace',fontSize:'15px',color:C.accent}}>{fmt(FLUJO_DEFAULT)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>valor por defecto</div>
               </div>
             </div>
           </div>
 
-          {promedioEntradas === 0 && (
-            <div style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'11px 14px',marginBottom:'14px',fontSize:'12px',color:C.accent,fontFamily:'monospace',lineHeight:1.6}}>
-              {faltanDias > 0
-                ? `⚠ Necesitás cargar ${faltanDias} día${faltanDias>1?'s':''} más de ventas para activar la proyección. (${diasPromedio}/7 días listos)`
-                : '⚠ Sin ventas diarias cargadas — entradas en $0. Cargá ventas por sucursal para activar la proyección.'}
-            </div>
-          )}
+          <div style={{background:'rgba(245,166,35,0.06)',border:'1px solid rgba(245,166,35,0.2)',borderRadius:'12px',padding:'10px 14px',marginBottom:'14px',fontSize:'11px',color:C.muted,fontFamily:'monospace',lineHeight:1.6}}>
+            ℹ Las entradas usan {fmt(FLUJO_DEFAULT)}/día como estimado. Los días pasados muestran ventas reales si fueron cargadas.
+          </div>
           <div style={{overflowX:'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'DM Mono,monospace',fontSize:'12px'}}>
               <thead>
