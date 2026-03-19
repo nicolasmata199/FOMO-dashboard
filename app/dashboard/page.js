@@ -36,11 +36,11 @@ function fechaLabel() {
 
 function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimientosExistentes) {
   const fijos = [
-    {dia:5,  descripcion:'Sueldos',          monto:9340241, grupo:'sueldos'},
-    {dia:10, descripcion:'Alquiler Cba 695',  monto:4090600, grupo:'alquileres'},
-    {dia:10, descripcion:'Alquiler Cba 642',  monto:720000,  grupo:'alquileres'},
-    {dia:10, descripcion:'Alquiler San Juan',  monto:1222619, grupo:'alquileres'},
-    {dia:15, descripcion:'Inversor',           monto:2160000, grupo:null},
+    {dia:5,  descripcion:'Sueldos',              monto:9340241, grupo:'sueldos'},
+    {dia:10, descripcion:'Alquiler Córdoba 695', monto:4090600, grupo:'alquileres'},
+    {dia:10, descripcion:'Alquiler Córdoba 642', monto:720000,  grupo:'alquileres'},
+    {dia:10, descripcion:'Alquiler San Juan 655',monto:1222619, grupo:'alquileres'},
+    {dia:15, descripcion:'Inversor',             monto:2160000, grupo:null},
   ]
   const coincide = {
     sueldos:    v => v.descripcion.toLowerCase().includes('sueldo'),
@@ -513,19 +513,17 @@ export default function Dashboard() {
       if (esPasadoOAyer) entradas = ventasMap[fechaStr] || 0
       else               entradas = ventasMap[fechaStr] || FLUJO_DEFAULT  // hoy o futuro
     }
-    let vencDia, fijosDia, todasSalidas
-    if (esPasadoOAyer) {
-      vencDia = todosVencimientosMap[fechaStr] || []
-      fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
-      todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
-    } else {
-      vencDia = vencimientos.filter(v => v.fecha === fechaStr)
-      fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
-      todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
-    }
+    const vencDia = esPasadoOAyer
+      ? (todosVencimientosMap[fechaStr] || [])
+      : vencimientos.filter(v => v.fecha === fechaStr)
+    const fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
     const gastosDelDia = gastosFlujoData.filter(g => g.fecha === fechaStr)
-    const totalGastosDelDia = gastosDelDia.reduce((sum,g) => sum + Number(g.monto||0), 0)
-    const salidas = todasSalidas.reduce((s,v) => s+v.monto, 0) + totalGastosDelDia
+
+    const totalVenc    = vencDia.reduce((s,v) => s + Number(v.monto||0), 0)
+    const totalFijos   = fijosDia.reduce((s,v) => s + Number(v.monto||0), 0)
+    const totalGastos  = gastosDelDia.reduce((s,g) => s + Number(g.monto||0), 0)
+    const salidas = totalVenc + totalFijos + totalGastos
+    const todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
     acumFlujo += entradas - salidas
     tablaFlujo.push({
       fechaLabel: fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),
