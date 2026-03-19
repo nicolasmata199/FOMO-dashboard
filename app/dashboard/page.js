@@ -75,12 +75,6 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
   return result
 }
 const FLUJO_DEFAULT = 500000
-function ventasRealesDia(historialDias, fechaStr) {
-  const d = historialDias.find(r => r.fecha === fechaStr)
-  if (!d) return null
-  const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
-  return (total > 0 && total < 5000000) ? total : null
-}
 
 export default function Dashboard() {
   const [usuario, setUsuario] = useState(null)
@@ -488,6 +482,12 @@ export default function Dashboard() {
   const flujoInicioStr = `${d_m3.getFullYear()}-${String(d_m3.getMonth()+1).padStart(2,'0')}-${String(d_m3.getDate()).padStart(2,'0')}`
   const flujoFinStr    = `${d_p29.getFullYear()}-${String(d_p29.getMonth()+1).padStart(2,'0')}-${String(d_p29.getDate()).padStart(2,'0')}`
   const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr, vencimientos)
+  // Mapa explícito fecha→ventas para lookup sin ambigüedad
+  const ventasMap = {}
+  historialDias.forEach(d => {
+    const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
+    if (total > 0 && total < 5000000) ventasMap[d.fecha] = total
+  })
   const todosVencimientosMap = {}
   ;[...vencimientos, ...vencPagados].forEach(v => {
     if (!todosVencimientosMap[v.fecha]) todosVencimientosMap[v.fecha] = []
@@ -496,20 +496,18 @@ export default function Dashboard() {
   for (let i = -3; i <= 29; i++) {
     const fecha = new Date(hY, hM, hD + i)
     const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
-    const esPasado = fechaStr < ayerStr   // antes de ayer
-    const esAyer   = fechaStr === ayerStr
-    const esHoy    = fechaStr === hoyStr0
-    const esDomingo = fecha.getDay() === 0
+    const esPasadoOAyer = fechaStr < hoyStr0  // cualquier día antes de hoy
+    const esHoy         = fechaStr === hoyStr0
+    const esDomingo     = fecha.getDay() === 0
+    // REGLA CONTABLE: pasado = hecho real (o $0 si no se cargó). Nunca proyectar el pasado.
+    // Solo proyectar desde hoy en adelante.
     let entradas = 0
     if (!esDomingo) {
-      const reales = ventasRealesDia(historialDias, fechaStr)
-      if (esPasado)       entradas = reales ?? 0
-      else if (esAyer)    entradas = reales ?? FLUJO_DEFAULT
-      else if (esHoy)     entradas = reales ?? FLUJO_DEFAULT
-      else                entradas = FLUJO_DEFAULT   // futuro
+      if (esPasadoOAyer) entradas = ventasMap[fechaStr] || 0
+      else               entradas = ventasMap[fechaStr] || FLUJO_DEFAULT  // hoy o futuro
     }
     let vencDia, fijosDia, todasSalidas
-    if (esPasado || esAyer) {
+    if (esPasadoOAyer) {
       vencDia = todosVencimientosMap[fechaStr] || []
       fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
       todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
@@ -525,7 +523,7 @@ export default function Dashboard() {
       entradas, salidas, vencDia, todasSalidas,
       cajaDia: entradas - salidas,
       acumulado: Math.round(acumFlujo),
-      esPasado: esPasado || esAyer,
+      esPasado: esPasadoOAyer,
     })
   }
   const diasRojo = tablaFlujo.filter(r => !r.esPasado && r.acumulado < 0).length
