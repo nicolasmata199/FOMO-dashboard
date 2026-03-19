@@ -454,15 +454,17 @@ export default function Dashboard() {
     const supabase = getSupabase()
     const hoy = hoyStr()
     const {data: rowHoy} = await supabase.from('datos_diarios')
-      .select('id,efectivo,transferencias,saldo_banco').eq('fecha',hoy).eq('usuario_id',userId).single()
+      .select('*')
+      .eq('fecha', hoy)
+      .eq('usuario_id', userId)
+      .single()
     if (rowHoy) {
       await supabase.from('datos_diarios')
         .update({ [fAjuste.campo]: (rowHoy[fAjuste.campo]||0) + monto })
         .eq('id', rowHoy.id)
     } else {
-      await supabase.from('datos_diarios')
-        .upsert({ fecha:hoy, usuario_id:userId, usuario_nombre:usuario?.nombre, [fAjuste.campo]: monto },
-                { onConflict:'fecha,usuario_id' })
+      alert('No hay datos cargados para hoy. Cargá los datos del día primero.')
+      return
     }
     await logH('UPDATE', `Ajuste ${fAjuste.campo}: ${monto > 0 ? '+' : ''}${fmt(monto)} — Motivo: ${fAjuste.motivo}`)
     setFAjuste({campo:'efectivo', monto:'', motivo:''})
