@@ -516,8 +516,9 @@ export default function Dashboard() {
     // Solo proyectar desde hoy en adelante.
     let entradas = 0
     if (!esDomingo) {
-      if (esPasadoOAyer) entradas = ventasMap[fechaStr] || 0
-      else               entradas = ventasMap[fechaStr] || FLUJO_DEFAULT  // hoy o futuro
+      const ventasReal = Number(ventasMap[fechaStr] || 0)
+      if (esPasadoOAyer) entradas = ventasReal
+      else               entradas = ventasReal > 0 ? ventasReal : FLUJO_DEFAULT  // hoy o futuro: real O estimado, nunca ambos
     }
     const vencDia = esPasadoOAyer
       ? (todosVencimientosMap[fechaStr] || [])
