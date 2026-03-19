@@ -75,11 +75,11 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
   return result
 }
 function calcularPromedio7d(historialDias) {
-  // Últimos 7 días hábiles (lun-sáb) con ventas > 0, excluye acumulados del mes (ventas_sanjuan > 5M)
+  // Últimos 7 días hábiles (lun-sáb) con ventas > 0
   const diasHabiles = historialDias
     .filter(d => {
       const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
-      if (total <= 0 || (d.ventas_sanjuan||0) > 5000000) return false
+      if (total <= 0) return false
       const [y,m,day] = d.fecha.split('-').map(Number)
       return new Date(y, m-1, day).getDay() !== 0
     })
