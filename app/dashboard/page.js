@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [diasConDatos, setDiasConDatos] = useState(0)
   const [acumData, setAcumData] = useState({efectivo:0,transferencias:0,saldoBanco:0,gastos:0})
   const [liquidoTotal, setLiquidoTotal] = useState(0)
+  const [gastosFlujoData, setGastosFlujoData] = useState([])
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
@@ -154,7 +155,11 @@ export default function Dashboard() {
     const currentUid = uid || userId
     const inicioMes = new Date(); inicioMes.setDate(1)
     const inicioMesStr = inicioMes.toISOString().split('T')[0]
-    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum] = await Promise.all([
+    const hoyD = new Date(); const hY0=hoyD.getFullYear(),hM0=hoyD.getMonth(),hD0=hoyD.getDate()
+    const flIni = new Date(hY0,hM0,hD0-3), flFin = new Date(hY0,hM0,hD0+29)
+    const flIniStr = `${flIni.getFullYear()}-${String(flIni.getMonth()+1).padStart(2,'0')}-${String(flIni.getDate()).padStart(2,'0')}`
+    const flFinStr = `${flFin.getFullYear()}-${String(flFin.getMonth()+1).padStart(2,'0')}-${String(flFin.getDate()).padStart(2,'0')}`
+    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum, gFlujo] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado',false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa',true).order('monto',{ascending:false}),
       supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
@@ -167,6 +172,7 @@ export default function Dashboard() {
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
+      supabase.from('gastos').select('fecha,monto,descripcion,categoria').gte('fecha',flIniStr).lte('fecha',flFinStr),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -176,6 +182,7 @@ export default function Dashboard() {
     if (h.data) setHistorial(h.data)
     if (ddReciente.data) setHistorialDias(ddReciente.data)
     if (vPagados.data) setVencPagados(vPagados.data)
+    if (gFlujo.data) setGastosFlujoData(gFlujo.data)
 
     // Cálculo de líquido acumulado
     const rowsAcum = ddAcum.data || []
@@ -516,11 +523,13 @@ export default function Dashboard() {
       fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
       todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
     }
-    const salidas = todasSalidas.reduce((s,v) => s+v.monto, 0)
+    const gastosDelDia = gastosFlujoData.filter(g => g.fecha === fechaStr)
+    const totalGastosDelDia = gastosDelDia.reduce((sum,g) => sum + Number(g.monto||0), 0)
+    const salidas = todasSalidas.reduce((s,v) => s+v.monto, 0) + totalGastosDelDia
     acumFlujo += entradas - salidas
     tablaFlujo.push({
       fechaLabel: fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),
-      entradas, salidas, vencDia, todasSalidas,
+      entradas, salidas, vencDia, todasSalidas, gastosDelDia,
       cajaDia: entradas - salidas,
       acumulado: Math.round(acumFlujo),
       esPasado: esPasadoOAyer,
@@ -1244,7 +1253,10 @@ export default function Dashboard() {
                             {r.todasSalidas.slice(0,2).map((v,j)=>(
                               <div key={j} style={{fontSize:'10px',color:C.muted,marginTop:'1px',textAlign:'right'}}>{v.descripcion.length>16?v.descripcion.slice(0,16)+'…':v.descripcion}</div>
                             ))}
-                            {r.todasSalidas.length > 2 && <div style={{fontSize:'10px',color:C.muted}}>+{r.todasSalidas.length-2} más</div>}
+                            {r.gastosDelDia.slice(0,2).map((g,j)=>(
+                              <div key={`g${j}`} style={{fontSize:'10px',color:'#f97316',marginTop:'1px',textAlign:'right'}}>{g.descripcion.length>16?g.descripcion.slice(0,16)+'…':g.descripcion}</div>
+                            ))}
+                            {(r.todasSalidas.length + r.gastosDelDia.length) > 4 && <div style={{fontSize:'10px',color:C.muted}}>+{r.todasSalidas.length+r.gastosDelDia.length-4} más</div>}
                           </div>
                         ) : '—'}
                       </td>
