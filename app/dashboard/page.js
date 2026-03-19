@@ -385,22 +385,24 @@ export default function Dashboard() {
     const monto = parseFloat(String(tarjetaMontoInput).replace(/\./g,'')) || 0
     if (!monto) return
     const supabase = getSupabase()
+    const hoy = hoyStr()
+    const fechaOriginal = fechaDatosHoy || hoy
 
-    // 1. Marcar el día original como acreditado (sin tocar saldo_banco de ese día)
-    const {error} = await supabase.from('datos_diarios')
+    // 1. Marcar el día original como acreditado
+    const {error: e1} = await supabase.from('datos_diarios')
       .update({ tarjeta_acreditada: true, tarjeta_monto_real: monto })
-      .eq('fecha', fechaDatosHoy || hoyStr())
+      .eq('fecha', fechaOriginal)
       .eq('usuario_id', userId)
+    if (e1) return
 
-    if (!error) {
-      // 2. Sumar el monto acreditado al saldo_banco del día de HOY
-      const hoy = hoyStr()
+    // 2. Sumar al saldo_banco SOLO si el día original NO es hoy
+    //    Si el día original ES hoy, ya está sumado en el mismo registro
+    if (fechaOriginal !== hoy) {
       const {data: rowHoy} = await supabase.from('datos_diarios')
         .select('id,saldo_banco')
         .eq('fecha', hoy)
         .eq('usuario_id', userId)
         .single()
-
       if (rowHoy) {
         await supabase.from('datos_diarios')
           .update({ saldo_banco: (rowHoy.saldo_banco || 0) + monto })
@@ -412,15 +414,24 @@ export default function Dashboard() {
             { onConflict: 'fecha,usuario_id' }
           )
       }
-
-      await logH('UPDATE', `Acreditación tarjeta: ${fmt(monto)} — ${usuario?.nombre} ${new Date().toLocaleString('es-AR')}`)
-
-      // 3. Recargar todos los datos para reflejar cambios reales de Supabase
-      await loadAll()
-
-      setTarjetaInputShow(false)
-      setTarjetaMontoInput('')
+    } else {
+      // El día original es hoy: sumar directamente al saldo_banco de hoy
+      const {data: rowHoy} = await supabase.from('datos_diarios')
+        .select('id,saldo_banco')
+        .eq('fecha', hoy)
+        .eq('usuario_id', userId)
+        .single()
+      if (rowHoy) {
+        await supabase.from('datos_diarios')
+          .update({ saldo_banco: (rowHoy.saldo_banco || 0) + monto })
+          .eq('id', rowHoy.id)
+      }
     }
+
+    await logH('UPDATE', `Acreditación tarjeta: ${fmt(monto)} — ${usuario?.nombre} ${new Date().toLocaleString('es-AR')}`)
+    await loadAll()
+    setTarjetaInputShow(false)
+    setTarjetaMontoInput('')
   }
 
   async function agregarDeuda() {
