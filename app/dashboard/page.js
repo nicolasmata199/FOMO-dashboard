@@ -34,7 +34,6 @@ function fechaLabel() {
   return `${dias[d.getDay()]} ${d.getDate()} ${mes[d.getMonth()]}`
 }
 
-const FLUJO_FALLBACK = 500000
 function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimientosExistentes) {
   const fijos = [
     {dia:5,  descripcion:'Sueldos',          monto:9340241, grupo:'sueldos'},
@@ -75,15 +74,20 @@ function generateGastosFijosRecurrentes(fechaInicioStr, fechaFinStr, vencimiento
   }
   return result
 }
-function calcularEntradasProyectadas(historialDias) {
-  // Excluir registros con ventas_sanjuan > 5M (son acumulados del mes, no ventas de un día)
-  const diarios = historialDias.filter(d => {
-    const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
-    return total > 0 && (d.ventas_sanjuan||0) <= 5000000
-  })
-  if (diarios.length === 0) return { promedio: FLUJO_FALLBACK, basadoEn: 0, fallback: true }
-  const total = diarios.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
-  return { promedio: Math.round(total / diarios.length), basadoEn: diarios.length, fallback: false }
+function calcularPromedio7d(historialDias) {
+  // Últimos 7 días hábiles (lun-sáb) con ventas > 0, excluye acumulados del mes (ventas_sanjuan > 5M)
+  const diasHabiles = historialDias
+    .filter(d => {
+      const total = (d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0)
+      if (total <= 0 || (d.ventas_sanjuan||0) > 5000000) return false
+      const [y,m,day] = d.fecha.split('-').map(Number)
+      return new Date(y, m-1, day).getDay() !== 0
+    })
+    .sort((a,b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, 7)
+  if (diasHabiles.length === 0) return { promedio: 0, basadoEn: 0 }
+  const total = diasHabiles.reduce((s,d) => s+(d.ventas_695||0)+(d.ventas_642||0)+(d.ventas_sanjuan||0), 0)
+  return { promedio: Math.round(total / diasHabiles.length), basadoEn: diasHabiles.length }
 }
 
 export default function Dashboard() {
@@ -115,7 +119,7 @@ export default function Dashboard() {
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
   const [modal, setModal] = useState('')
-  const MP0 = {venc:null,paso:1,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:'',medio:null,cuotas:1,cheques:[{monto:'',fecha:''}]}
+  const MP0 = {venc:null,paso:1,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:'',medio:null,cuotas:1,cheques:[{monto:'',fecha:''}],interesInput:'0',notaInput:'',subopcionD:null}
   const [modalPago, setModalPago] = useState(MP0)
   const [tarjetaInputShow, setTarjetaInputShow] = useState(false)
   const [tarjetaMontoInput, setTarjetaMontoInput] = useState('')
@@ -172,7 +176,7 @@ export default function Dashboard() {
       supabase.from('stock').select('*').order('categoria'),
       supabase.from('historial').select('*').order('created_at',{ascending:false}).limit(20),
       supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()),
-      supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(10),
+      supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('fecha,efectivo,transferencias,saldo_banco').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
@@ -297,7 +301,7 @@ export default function Dashboard() {
   }
 
   async function confirmarPago() {
-    const {venc, opcion, montoInput, nuevoMonto, nuevaFecha, medio, cuotas, cheques} = modalPago
+    const {venc, opcion, montoInput, nuevoMonto, nuevaFecha, medio, cuotas, cheques, interesInput, notaInput, subopcionD} = modalPago
     if (!venc || !opcion) return
     const supabase = getSupabase()
     const montoPagado = parseFloat(String(montoInput).replace(/\./g,'')) || venc.monto
@@ -309,6 +313,26 @@ export default function Dashboard() {
       await supabase.from('vencimientos').update({fecha:nuevaFecha}).eq('id',venc.id)
       await logH('UPDATE', `Fecha renegociada: ${venc.descripcion} → ${nuevaFecha} — ${usuario?.nombre}`)
       setModal(''); setModalPago(MP0); await loadAll(); return
+    }
+
+    // Opcion D: No pude pagar
+    if (opcion === 'nopago') {
+      if (subopcionD === 'interes') {
+        if (!nuevaFecha) return
+        const interes = parseFloat(interesInput||0) || 0
+        const nuevoMontoCalc = Math.round(venc.monto * (1 + interes/100))
+        await supabase.from('vencimientos').update({fecha:nuevaFecha, monto:nuevoMontoCalc}).eq('id',venc.id)
+        const interesLabel = interes > 0 ? ` (interés ${interes}%)` : ''
+        await logH('UPDATE', `Redefinido: ${venc.descripcion} → ${nuevaFecha} ${fmt(nuevoMontoCalc)}${interesLabel} — ${usuario?.nombre} ${ahora}`)
+        setModal(''); setModalPago(MP0); await loadAll(); return
+      }
+      if (subopcionD === 'deuda') {
+        await supabase.from('deudas').insert({descripcion:venc.descripcion, monto:venc.monto, tipo:'impago', activa:true, usuario_nombre:usuario?.nombre})
+        await supabase.from('vencimientos').delete().eq('id',venc.id)
+        await logH('UPDATE', `Pasado a deuda impaga: ${venc.descripcion} — ${fmt(venc.monto)} — ${usuario?.nombre} ${ahora}`)
+        setModal(''); setModalPago(MP0); await loadAll(); return
+      }
+      return
     }
 
     if (!medio) return
@@ -460,36 +484,59 @@ export default function Dashboard() {
   const colorVentas = pctObj >= 100 ? '#3ddc84' : pctObj >= 70 ? '#f5a623' : '#ff5050'
   const diasDelMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
 
-  // Flujo 30 días
-  const { promedio: promedioEntradas, basadoEn: diasPromedio, fallback: flujFallback } = calcularEntradasProyectadas(historialDias)
+  // Flujo 33 días (hoy-3 a hoy+29)
+  const { promedio: promedioEntradas, basadoEn: diasPromedio } = calcularPromedio7d(historialDias)
   const tablaFlujo = []
   let acumFlujo = liquidoHoy
   const hoyBase = new Date()
   const hY = hoyBase.getFullYear(), hM = hoyBase.getMonth(), hD = hoyBase.getDate()
-  const d1 = new Date(hY, hM, hD + 1),  d30 = new Date(hY, hM, hD + 30)
-  const flujoInicioStr = `${d1.getFullYear()}-${String(d1.getMonth()+1).padStart(2,'0')}-${String(d1.getDate()).padStart(2,'0')}`
-  const flujoFinStr    = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`
+  const d_m3 = new Date(hY, hM, hD - 3), d_p29 = new Date(hY, hM, hD + 29)
+  const flujoInicioStr = `${d_m3.getFullYear()}-${String(d_m3.getMonth()+1).padStart(2,'0')}-${String(d_m3.getDate()).padStart(2,'0')}`
+  const flujoFinStr    = `${d_p29.getFullYear()}-${String(d_p29.getMonth()+1).padStart(2,'0')}-${String(d_p29.getDate()).padStart(2,'0')}`
   const gastosFijos = generateGastosFijosRecurrentes(flujoInicioStr, flujoFinStr, vencimientos)
-  for (let i = 1; i <= 30; i++) {
+  const datosDiariosMap = {}
+  historialDias.forEach(d => { datosDiariosMap[d.fecha] = d })
+  const todosVencimientosMap = {}
+  ;[...vencimientos, ...vencPagados].forEach(v => {
+    if (!todosVencimientosMap[v.fecha]) todosVencimientosMap[v.fecha] = []
+    todosVencimientosMap[v.fecha].push(v)
+  })
+  for (let i = -3; i <= 29; i++) {
     const fecha = new Date(hY, hM, hD + i)
     const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
-    const vencDia  = vencimientos.filter(v => v.fecha === fechaStr)
-    const fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
-    const todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
+    const esPasado = i < 0
+    const esDomingo = fecha.getDay() === 0
+    let entradas = 0
+    if (!esDomingo) {
+      if (i <= 0) {
+        const dd = datosDiariosMap[fechaStr]
+        entradas = dd ? Math.max(0, (dd.ventas_695||0)+(dd.ventas_642||0)+(dd.ventas_sanjuan||0)) : 0
+      } else {
+        entradas = promedioEntradas
+      }
+    }
+    let vencDia, fijosDia, todasSalidas
+    if (esPasado) {
+      vencDia = todosVencimientosMap[fechaStr] || []
+      fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
+      todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
+    } else {
+      vencDia = vencimientos.filter(v => v.fecha === fechaStr)
+      fijosDia = gastosFijos.filter(g => g.fecha === fechaStr)
+      todasSalidas = [...vencDia.map(v=>({...v,esFijo:false})), ...fijosDia]
+    }
     const salidas = todasSalidas.reduce((s,v) => s+v.monto, 0)
-    acumFlujo += promedioEntradas - salidas
+    acumFlujo += entradas - salidas
     tablaFlujo.push({
       fechaLabel: fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),
-      entradas: promedioEntradas,
-      salidas,
-      vencDia,
-      todasSalidas,
-      cajaDia: promedioEntradas - salidas,
+      entradas, salidas, vencDia, todasSalidas,
+      cajaDia: entradas - salidas,
       acumulado: Math.round(acumFlujo),
+      esPasado,
     })
   }
-  const diasRojo = tablaFlujo.filter(r => r.acumulado < 0).length
-  const diasAmarillo = tablaFlujo.filter(r => r.acumulado >= 0 && r.acumulado < 1000000).length
+  const diasRojo = tablaFlujo.filter(r => !r.esPasado && r.acumulado < 0).length
+  const diasAmarillo = tablaFlujo.filter(r => !r.esPasado && r.acumulado >= 0 && r.acumulado < 1000000).length
 
   function tipoBadge(t) {
     const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',cambio:'#22d3ee',otro:'#7a7876'}
@@ -1023,12 +1070,31 @@ export default function Dashboard() {
             </div>
           )}
 
+          {deudas.filter(d=>d.tipo==='impago').length > 0 && (
+            <>
+              <div style={{...S.sec,color:'#fb923c'}}>Deudas impagas</div>
+              <div style={{...S.card,padding:0,overflow:'hidden'}}>
+                {deudas.filter(d=>d.tipo==='impago').map((d,i) => (
+                  <div key={i} style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px',background:'rgba(251,146,60,0.04)'}}>
+                    <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:'#fb923c',flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:'#fb923c'}}>⚠ {d.descripcion}</div>
+                      <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace'}}>sin fecha · {d.usuario_nombre}</div>
+                    </div>
+                    <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:'#fb923c',flexShrink:0}}>{fmt(d.monto)}</span>
+                    <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',marginTop:'8px'}}>
             <div style={S.sec}>Deudas registradas</div>
             <button style={{fontSize:'12px',color:C.accent,background:'rgba(245,224,0,0.08)',border:`1px solid rgba(245,224,0,0.25)`,borderRadius:'8px',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:700,padding:'7px 14px'}} onClick={()=>setModal('deuda')}>+ Nueva</button>
           </div>
           <div style={{...S.card,padding:0,overflow:'hidden'}}>
-            {deudas.map((d,i) => (
+            {deudas.filter(d=>d.tipo!=='impago').map((d,i) => (
               <div key={i} style={{padding:'16px 18px',borderBottom:`1px solid ${C.cardBorder}`,display:'flex',alignItems:'center',gap:'12px'}}>
                 <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:C.red,flexShrink:0}}/>
                 <div style={{flex:1,minWidth:0}}>
@@ -1155,15 +1221,15 @@ export default function Dashboard() {
               </div>
               <div style={{textAlign:'right'}}>
                 <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Promedio diario</div>
-                <div style={{fontFamily:'monospace',fontSize:'15px',color:flujFallback?C.accent:C.green}}>{fmt(promedioEntradas)}</div>
-                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{flujFallback ? 'estimado por defecto' : `basado en ${diasPromedio} días`}</div>
+                <div style={{fontFamily:'monospace',fontSize:'15px',color:diasPromedio>0?C.green:C.accent}}>{fmt(promedioEntradas)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{diasPromedio > 0 ? `basado en ${diasPromedio} días` : 'sin datos históricos'}</div>
               </div>
             </div>
           </div>
 
-          {flujFallback && (
+          {promedioEntradas === 0 && (
             <div style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'11px 14px',marginBottom:'14px',fontSize:'12px',color:C.accent,fontFamily:'monospace',lineHeight:1.6}}>
-              ⚠ Datos históricos insuficientes — ingresá ventas diarias para mejorar la proyección. Usando {fmt(FLUJO_FALLBACK)} como estimado.
+              ⚠ Sin datos históricos — las entradas estimadas aparecen en $0 hasta que cargues ventas diarias.
             </div>
           )}
           <div style={{overflowX:'auto'}}>
@@ -1177,9 +1243,9 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {tablaFlujo.map((r,i)=>{
-                  const bg = r.acumulado < 0 ? 'rgba(220,38,38,0.15)' : r.acumulado < 1000000 ? 'rgba(245,166,35,0.1)' : 'transparent'
+                  const bg = r.esPasado ? 'rgba(255,255,255,0.02)' : (r.acumulado < 0 ? 'rgba(220,38,38,0.15)' : r.acumulado < 1000000 ? 'rgba(245,166,35,0.1)' : 'transparent')
                   return (
-                    <tr key={i} style={{borderBottom:`1px solid ${C.cardBorder}`,background:bg}}>
+                    <tr key={i} style={{borderBottom:`1px solid ${C.cardBorder}`,background:bg,opacity:r.esPasado?0.5:1}}>
                       <td style={{padding:'9px 6px',color:C.label}}>{r.fechaLabel}</td>
                       <td style={{padding:'9px 6px',textAlign:'right',color:C.green}}>{fmt(r.entradas)}</td>
                       <td style={{padding:'9px 6px',textAlign:'right',color:r.salidas>0?C.red:C.muted,fontSize:'11px',verticalAlign:'top'}}>
@@ -1198,6 +1264,13 @@ export default function Dashboard() {
                     </tr>
                   )
                 })}
+                {deudas.filter(d=>d.tipo==='impago').map((d,i)=>(
+                  <tr key={`deuda-${i}`} style={{borderBottom:`1px solid rgba(251,146,60,0.2)`,background:'rgba(251,146,60,0.06)'}}>
+                    <td colSpan={5} style={{padding:'9px 8px',color:'#fb923c',fontFamily:'DM Mono,monospace',fontSize:'11px',fontWeight:600}}>
+                      ⚠ DEUDA PENDIENTE: {d.descripcion} — {fmt(d.monto)} (sin fecha)
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1205,7 +1278,7 @@ export default function Dashboard() {
           <div style={{...S.card,marginTop:'16px'}}>
             <div style={{...S.row}}>
               <span style={{color:C.label,fontSize:'13px'}}>Saldo proyectado en 30 días</span>
-              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:tablaFlujo[29]?.acumulado>0?C.green:C.red}}>{fmt(tablaFlujo[29]?.acumulado||0)}</span>
+              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)>0?C.green:C.red}}>{fmt(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)}</span>
             </div>
             <div style={{...S.row}}>
               <span style={{color:C.red,fontSize:'12px'}}>Días en rojo</span>
@@ -1215,6 +1288,11 @@ export default function Dashboard() {
               <span style={{color:C.accent,fontSize:'12px'}}>Días en amarillo</span>
               <span style={{fontFamily:'monospace',color:C.accent,fontWeight:700}}>{diasAmarillo}</span>
             </div>
+          </div>
+          <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',marginTop:'10px',padding:'11px 14px',background:C.card,borderRadius:'12px',border:`1px solid ${C.cardBorder}`,lineHeight:2}}>
+            <span style={{color:C.green}}>●</span> Verde = acumulado {'>'} $1.000.000&nbsp;&nbsp;
+            <span style={{color:C.accent}}>●</span> Amarillo = acumulado entre $0 y $1.000.000&nbsp;&nbsp;
+            <span style={{color:C.red}}>●</span> Rojo = acumulado negativo
           </div>
         </div>
       )}
@@ -1345,6 +1423,7 @@ export default function Dashboard() {
                   {id:'completo',label:'Pago completo',desc:'Marcar como pagado',color:'rgba(52,211,153,0.12)',border:'rgba(52,211,153,0.3)',tc:C.green},
                   {id:'parcial',label:'Pago parcial',desc:'Pagar una parte, actualizar saldo y fecha',color:'rgba(245,166,35,0.08)',border:'rgba(245,166,35,0.3)',tc:C.accent},
                   {id:'fecha',label:'Renegocié la fecha',desc:'Solo mover la fecha, sin pago',color:'rgba(96,165,250,0.08)',border:'rgba(96,165,250,0.25)',tc:C.blue},
+                  {id:'nopago',label:'No pude pagar',desc:'Redefinir con interés o pasar a deuda impaga',color:'rgba(248,113,113,0.08)',border:'rgba(248,113,113,0.25)',tc:C.red},
                 ].map(op=>(
                   <button key={op.id} onClick={()=>setModalPago({...modalPago,opcion:op.id})}
                     style={{background:op.color,border:`1px solid ${op.border}`,borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
@@ -1408,6 +1487,70 @@ export default function Dashboard() {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                   <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
                   <button style={{...S.btn,background:'rgba(96,165,250,0.12)',border:'1px solid rgba(96,165,250,0.3)',color:C.blue}} onClick={confirmarPago}>✓ Actualizar fecha</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 1: no pude pagar — elegir sub-opción */}
+            {modalPago.paso === 1 && modalPago.opcion === 'nopago' && !modalPago.subopcionD && (
+              <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                <p style={{fontSize:'12px',color:C.muted,fontFamily:'monospace',marginBottom:'4px'}}>¿Qué querés hacer con este vencimiento?</p>
+                <button onClick={()=>setModalPago({...modalPago,subopcionD:'interes'})}
+                  style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                  <div style={{fontSize:'14px',fontWeight:700,color:C.accent,marginBottom:'2px'}}>Redefinir con interés</div>
+                  <div style={{fontSize:'11px',color:C.muted}}>Nueva fecha + interés opcional. Actualiza el vencimiento.</div>
+                </button>
+                <button onClick={()=>setModalPago({...modalPago,subopcionD:'deuda'})}
+                  style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.3)',borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                  <div style={{fontSize:'14px',fontWeight:700,color:C.red,marginBottom:'2px'}}>Pasar a deuda</div>
+                  <div style={{fontSize:'11px',color:C.muted}}>Elimina de vencimientos activos y lo registra como deuda impaga.</div>
+                </button>
+                <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label,marginTop:'4px'}} onClick={()=>setModalPago({...modalPago,opcion:null})}>← Volver</button>
+              </div>
+            )}
+
+            {/* PASO 1: D1 — redefinir con interés */}
+            {modalPago.paso === 1 && modalPago.opcion === 'nopago' && modalPago.subopcionD === 'interes' && (
+              <div>
+                <div style={{marginBottom:'10px'}}>
+                  <label style={S.label}>Nueva fecha de vencimiento</label>
+                  <input type="date" style={{...S.inp,fontSize:'14px'}} value={modalPago.nuevaFecha} onChange={e=>setModalPago({...modalPago,nuevaFecha:e.target.value})}/>
+                </div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={S.label}>Interés (%) — dejar en 0 para sin interés</label>
+                  <input type="text" inputMode="decimal" style={S.inp} placeholder="0"
+                    value={modalPago.interesInput}
+                    onChange={e=>setModalPago({...modalPago,interesInput:e.target.value.replace(/[^\d.]/g,'')})}/>
+                </div>
+                {parseFloat(modalPago.interesInput||0) > 0 && (
+                  <div style={{background:C.inputBg,borderRadius:'8px',padding:'10px 12px',marginBottom:'12px',fontSize:'12px',fontFamily:'monospace',color:C.accent}}>
+                    Nuevo monto: {fmt(Math.round(modalPago.venc.monto * (1 + parseFloat(modalPago.interesInput||0)/100)))}
+                    {' '}({fmt(modalPago.venc.monto)} + {modalPago.interesInput}%)
+                  </div>
+                )}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,subopcionD:null})}>← Volver</button>
+                  <button style={{...S.btn,background:'rgba(245,166,35,0.15)',border:'1px solid rgba(245,166,35,0.4)',color:C.accent}} onClick={confirmarPago}>✓ Actualizar</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 1: D2 — pasar a deuda */}
+            {modalPago.paso === 1 && modalPago.opcion === 'nopago' && modalPago.subopcionD === 'deuda' && (
+              <div>
+                <div style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'10px',padding:'12px 14px',marginBottom:'12px',fontSize:'12px',color:C.red,fontFamily:'monospace'}}>
+                  {modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}<br/>
+                  <span style={{color:C.muted}}>Se eliminará de vencimientos y aparecerá como deuda impaga sin fecha.</span>
+                </div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={S.label}>Nota (opcional)</label>
+                  <input type="text" style={S.inp} placeholder="ej: no pudimos pagar este mes"
+                    value={modalPago.notaInput}
+                    onChange={e=>setModalPago({...modalPago,notaInput:e.target.value})}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                  <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModalPago({...modalPago,subopcionD:null})}>← Volver</button>
+                  <button style={{...S.btn,background:'rgba(248,113,113,0.15)',border:'1px solid rgba(248,113,113,0.4)',color:C.red}} onClick={confirmarPago}>Pasar a deuda</button>
                 </div>
               </div>
             )}
