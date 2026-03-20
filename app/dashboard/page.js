@@ -422,7 +422,8 @@ export default function Dashboard() {
     const {error: e1} = await supabase.from('datos_diarios')
       .update({ tarjeta_acreditada: true, tarjeta_monto_real: monto })
       .eq('fecha', fechaOriginal)
-      .eq('usuario_id', userId)
+      .order('id', { ascending: false })
+      .limit(1)
     if (e1) return
 
     // 2. Sumar al saldo_banco SOLO si el día original NO es hoy
@@ -821,7 +822,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div style={S.sec}>Detalle de cobros de hoy</div>
+          <div style={S.sec}>Detalle del último día cargado {fechaDatosHoy && fechaDatosHoy !== hoyStr() ? `(${fechaDatosHoy.split('-').reverse().join('/')})` : ''}</div>
           <div style={S.card}>
             {[
               {label:'Efectivo', val:datosHoy.efectivo||0},
