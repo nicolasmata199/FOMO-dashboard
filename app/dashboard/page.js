@@ -381,7 +381,7 @@ export default function Dashboard() {
     // Paso 2: impacto según medio de pago
     if (medio === 'efectivo' || medio === 'transferencia' || medio === 'banco') {
       const campo = medio === 'efectivo' ? 'efectivo' : medio === 'transferencia' ? 'transferencias' : 'saldo_banco'
-      const {data: rowHoy} = await supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()).eq('usuario_id',userId).single()
+      const {data: rowHoy} = await supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()).order('id',{ascending:false}).limit(1).single()
       if (rowHoy) {
         await supabase.from('datos_diarios').update({[campo]: (rowHoy[campo]||0) - montoPagado}).eq('id',rowHoy.id)
       } else {
@@ -429,9 +429,10 @@ export default function Dashboard() {
     //    Si el día original ES hoy, ya está sumado en el mismo registro
     if (fechaOriginal !== hoy) {
       const {data: rowHoy} = await supabase.from('datos_diarios')
-        .select('id,saldo_banco')
+        .select('*')
         .eq('fecha', hoy)
-        .eq('usuario_id', userId)
+        .order('id', {ascending:false})
+        .limit(1)
         .single()
       if (rowHoy) {
         await supabase.from('datos_diarios')
@@ -447,9 +448,10 @@ export default function Dashboard() {
     } else {
       // El día original es hoy: sumar directamente al saldo_banco de hoy
       const {data: rowHoy} = await supabase.from('datos_diarios')
-        .select('id,saldo_banco')
+        .select('*')
         .eq('fecha', hoy)
-        .eq('usuario_id', userId)
+        .order('id', {ascending:false})
+        .limit(1)
         .single()
       if (rowHoy) {
         await supabase.from('datos_diarios')
