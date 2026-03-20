@@ -270,9 +270,33 @@ export default function Dashboard() {
         lastSaveRef.current = Date.now()
         const supabase = getSupabase()
         const {id:_id, created_at:_ca, ...datosSinMeta} = datosDia
-        const {error} = await supabase.from('datos_diarios').upsert({
-          ...datosSinMeta, fecha:fechaCarga, usuario_id:userId, usuario_nombre:usuario?.nombre, updated_at:new Date().toISOString()
-        }, {onConflict:'fecha,usuario_id'})
+        const {data: rowExist} = await supabase.from('datos_diarios')
+          .select('*')
+          .eq('fecha', fechaCarga)
+          .eq('usuario_id', userId)
+          .single()
+
+        let error
+        if (rowExist) {
+          const {error: e} = await supabase.from('datos_diarios')
+            .update({
+              ...datosSinMeta,
+              usuario_nombre: usuario?.nombre,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', rowExist.id)
+          error = e
+        } else {
+          const {error: e} = await supabase.from('datos_diarios')
+            .insert({
+              ...datosSinMeta,
+              fecha: fechaCarga,
+              usuario_id: userId,
+              usuario_nombre: usuario?.nombre,
+              updated_at: new Date().toISOString()
+            })
+          error = e
+        }
         if (error) {
           setMsg('❌ Error: ' + error.message)
           setTimeout(()=>setMsg(''),5000)
