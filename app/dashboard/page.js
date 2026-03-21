@@ -207,7 +207,7 @@ export default function Dashboard() {
     const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo>0?r.efectivo:0), 0)
     const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias>0?r.transferencias:0), 0)
     const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido>0?r.cheque_recibido:0), 0)
-    const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco>0?r.saldo_banco:0), 0)
+    const saldoBancoUlt = rowsAcum.length > 0 ? (rowsAcum[0].saldo_banco || 0) : 0
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
     const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt - totalGastosAcum
     console.log('[FOMO] efectivo_acum:', efectivoAcum)
@@ -283,7 +283,8 @@ export default function Dashboard() {
             .update({
               ...datosSinMeta,
               usuario_nombre: usuario?.nombre,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              saldo_banco: datosDia.saldo_banco || rowExist.saldo_banco,
             })
             .eq('id', rowExist.id)
           error = e
