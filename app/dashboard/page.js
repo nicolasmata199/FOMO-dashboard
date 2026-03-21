@@ -482,22 +482,27 @@ export default function Dashboard() {
     if (!monto || !fAjuste.motivo) return
     const supabase = getSupabase()
     const hoy = hoyStr()
-    const {data: rowHoy} = await supabase.from('datos_diarios')
+    let {data: rowHoy} = await supabase.from('datos_diarios')
       .select('*')
       .eq('fecha', hoy)
       .order('id', { ascending: false })
       .limit(1)
       .single()
-    if (rowHoy) {
-      await supabase.from('datos_diarios')
-        .update({ [fAjuste.campo]: (rowHoy[fAjuste.campo]||0) + monto })
-        .eq('id', rowHoy.id)
-    } else {
-      alert('No hay datos cargados para hoy. Cargá los datos del día primero.')
-      return
+    if (!rowHoy) {
+      const {data: nuevo} = await supabase.from('datos_diarios')
+        .insert({ fecha: hoy, usuario_id: userId, usuario_nombre: usuario?.nombre || 'usuario' })
+        .select('*')
+        .single()
+      if (!nuevo) { setMsg('✗ Error al crear registro para hoy'); setTimeout(()=>setMsg(''),3000); return }
+      rowHoy = nuevo
     }
+    await supabase.from('datos_diarios')
+      .update({ [fAjuste.campo]: (rowHoy[fAjuste.campo]||0) + monto })
+      .eq('id', rowHoy.id)
     await logH('UPDATE', `Ajuste ${fAjuste.campo}: ${monto > 0 ? '+' : ''}${fmt(monto)} — Motivo: ${fAjuste.motivo}`)
     setFAjuste({campo:'efectivo', monto:'', motivo:''})
+    setMsg('✓ Ajuste guardado')
+    setTimeout(()=>setMsg(''),2000)
     await loadAll()
   }
 
