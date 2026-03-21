@@ -227,7 +227,7 @@ export default function Dashboard() {
     const rowsRecientes = ddReciente.data || []
     const mejorVentas = rowsRecientes.find(x => (x.ventas_acumuladas_mes||0) > 0)?.ventas_acumuladas_mes || 0
     if (rowsHoy.length > 0) {
-      const r = rowsHoy.find(x => x.usuario_id === currentUid) || rowsHoy[0]
+      const r = rowsHoy[0]
       const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
       setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       const tieneDataReal = (r.efectivo||0) > 0 || (r.transferencias||0) > 0 || (r.ventas_695||0) > 0 || (r.ventas_642||0) > 0 || (r.ventas_sanjuan||0) > 0
@@ -247,10 +247,9 @@ export default function Dashboard() {
 
   async function cargarFecha(fecha) {
     const supabase = getSupabase()
-    const {data: conId} = await supabase.from('datos_diarios').select('*').eq('fecha',fecha).eq('usuario_id',userId).single()
-    const {data: sinId} = !conId ? await supabase.from('datos_diarios').select('*').eq('fecha',fecha).is('usuario_id',null).single() : {data:null}
+    const {data: conId} = await supabase.from('datos_diarios').select('*').eq('fecha',fecha).order('id',{ascending:false}).limit(1).single()
     const {data: gas} = await supabase.from('gastos').select('*').eq('fecha',fecha).order('created_at',{ascending:false})
-    const data = conId || sinId
+    const data = conId
     if (data) setDatosDia(data)
     else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:''})
     if (gas) setGastos(gas)
