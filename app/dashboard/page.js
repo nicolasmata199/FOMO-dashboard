@@ -891,6 +891,7 @@ export default function Dashboard() {
               {l:'Efectivo acumulado', v:acumData.efectivo, c:'#3ddc84'},
               {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
               {l:'Banco acumulado', v:acumData.saldoBanco, c:'#3ddc84'},
+              {l:'Cheques acumulados', v:acumData.cheque, c:'#3ddc84'},
               {l:'Gastos registrados', v:-acumData.gastos, c:C.red},
             ].map((r,i) => (
               <div key={i} style={S.row}>
