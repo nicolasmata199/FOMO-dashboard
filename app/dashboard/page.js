@@ -564,6 +564,31 @@ export default function Dashboard() {
     const tipoLabel = tipos[fCambio.tipo] || fCambio.tipo
     const desc = `Cambio: ${tipoLabel} | Original: ${fmt(orig)} | Recibido: ${fmt(recib)}${descuento > 0 ? ` | Descuento: ${fmt(descuento)}` : ''}${fCambio.descripcion ? ` — ${fCambio.descripcion}` : ''}`
     await supabase.from('gastos').insert({descripcion:desc, monto:descuento > 0 ? descuento : 0, fecha:fechaCarga, categoria:'cambio', usuario_nombre:usuario?.nombre})
+    const mapaCambios = {
+      'cheque_efectivo':       { resta: 'cheque_recibido', suma: 'efectivo' },
+      'echeq_efectivo':        { resta: 'cheque_recibido', suma: 'efectivo' },
+      'banco_efectivo':        { resta: 'saldo_banco',     suma: 'efectivo' },
+      'efectivo_banco':        { resta: 'efectivo',        suma: 'saldo_banco' },
+      'transferencia_efectivo':{ resta: 'transferencias',  suma: 'efectivo' },
+      'efectivo_transferencia':{ resta: 'efectivo',        suma: 'transferencias' },
+      'transferencia_banco':   { resta: 'transferencias',  suma: 'saldo_banco' },
+    }
+    const movimiento = mapaCambios[fCambio.tipo]
+    if (movimiento) {
+      let {data: rowHoy} = await supabase.from('datos_diarios').select('*').eq('fecha',fechaCarga).eq('usuario_id',userId).single()
+      if (!rowHoy) {
+        const {data: nuevo} = await supabase.from('datos_diarios')
+          .insert({ fecha: fechaCarga, usuario_id: userId, usuario_nombre: usuario?.nombre || 'usuario' })
+          .select('*').single()
+        rowHoy = nuevo
+      }
+      if (rowHoy) {
+        await supabase.from('datos_diarios').update({
+          [movimiento.resta]: Math.max(0, (rowHoy[movimiento.resta]||0) - orig),
+          [movimiento.suma]:  (rowHoy[movimiento.suma]||0) + recib
+        }).eq('id', rowHoy.id)
+      }
+    }
     await logH('INSERT', `Registró cambio: ${tipoLabel} ${fmt(orig)} → ${fmt(recib)}`)
     setFCambio({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
     await loadAll()
