@@ -221,22 +221,23 @@ export default function Dashboard() {
 
     const rowsMes = ddMes.data || []
     const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
-    const ventasAcumMes = rowsMes.reduce((s,r) =>
-      s + (r.efectivo||0) + (r.transferencias||0) + (r.saldo_banco||0) + (r.cheque_recibido||0), 0)
-    setVentasMes(ventasAcumMes)
+    setVentasMes(totalVentasMes)
     const diasCon = rowsMes.filter(r => ((r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)) > 0).length
     setDiasConDatos(diasCon)
 
     const rowsHoy = ddHoy.data || []
     const rowsRecientes = ddReciente.data || []
+    const mejorVentas = rowsRecientes.find(x => (x.ventas_acumuladas_mes||0) > 0)?.ventas_acumuladas_mes || 0
     if (rowsHoy.length > 0) {
       const r = rowsHoy[0]
-      setDatosHoy({...r, ventas_acumuladas_mes: ventasAcumMes})
+      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
+      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       const tieneDataReal = (r.efectivo||0) > 0 || (r.transferencias||0) > 0 || (r.ventas_695||0) > 0 || (r.ventas_642||0) > 0 || (r.ventas_sanjuan||0) > 0
       setFechaDatosHoy(tieneDataReal ? hoyStr() : (rowsRecientes.length > 0 ? rowsRecientes[0].fecha : hoyStr()))
     } else if (rowsRecientes.length > 0) {
       const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
-      setDatosHoy({...r, ventas_acumuladas_mes: ventasAcumMes})
+      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
+      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
       setFechaDatosHoy(rowsRecientes[0].fecha)  // siempre la fecha más reciente sin importar usuario
     }
   }
