@@ -323,9 +323,9 @@ export default function Dashboard() {
   async function agregarVencimiento() {
     if (!fVenc.fecha || !fVenc.descripcion || !fVenc.monto) return
     const supabase = getSupabase()
-    await supabase.from('vencimientos').insert({...fVenc, monto:parseFloat(fVenc.monto), usuario_nombre:usuario?.nombre})
+    await supabase.from('vencimientos').insert({...fVenc, monto:parseFloat(fVenc.monto), deuda_id: fVenc.deuda_id || null, usuario_nombre:usuario?.nombre})
     await logH('INSERT', `Agregó vencimiento: ${fVenc.descripcion} — ${fmt(parseFloat(fVenc.monto))}`)
-    setFVenc({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
+    setFVenc({fecha:'',descripcion:'',monto:'',tipo:'cheque',deuda_id:null})
     setModal('')
     await loadAll()
   }
@@ -378,6 +378,20 @@ export default function Dashboard() {
     } else if (opcion === 'parcial') {
       const saldoRestante = parseFloat(String(nuevoMonto).replace(/\./g,'')) || Math.max(0, venc.monto - montoPagado)
       await supabase.from('vencimientos').update({monto:saldoRestante, fecha:nuevaFecha||venc.fecha}).eq('id',venc.id)
+    }
+
+    // Descuento de deuda vinculada
+    const {data: vencData} = await supabase.from('vencimientos').select('deuda_id').eq('id',venc.id).single()
+    if (vencData?.deuda_id) {
+      const {data: deudaLinked} = await supabase.from('deudas').select('monto').eq('id',vencData.deuda_id).single()
+      if (deudaLinked) {
+        const nuevoSaldo = deudaLinked.monto - montoPagado
+        if (nuevoSaldo <= 0) {
+          await supabase.from('deudas').update({ activa: false, monto: 0 }).eq('id', vencData.deuda_id)
+        } else {
+          await supabase.from('deudas').update({ monto: nuevoSaldo }).eq('id', vencData.deuda_id)
+        }
+      }
     }
 
     // Paso 2: impacto según medio de pago
@@ -1516,6 +1530,15 @@ export default function Dashboard() {
                 <option value="otro">Otro</option>
               </select>
             </div>
+            {deudas.length > 0 && (
+              <div style={{marginBottom:'9px'}}>
+                <label style={S.label}>Vincular a deuda (opcional)</label>
+                <select style={S.sel} value={fVenc.deuda_id||''} onChange={e=>setFVenc({...fVenc,deuda_id:e.target.value||null})}>
+                  <option value=''>— Ninguna —</option>
+                  {deudas.map(d=><option key={d.id} value={d.id}>{d.descripcion} ({fmt(d.monto)})</option>)}
+                </select>
+              </div>
+            )}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginTop:'8px'}}>
               <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.label}} onClick={()=>setModal('')}>Cancelar</button>
               <button style={S.btn} onClick={agregarVencimiento}>Agregar</button>
