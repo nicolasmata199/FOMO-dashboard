@@ -277,14 +277,22 @@ export default function Dashboard() {
           .eq('usuario_id', userId)
           .single()
 
+        const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
+        const payload = {...datosSinMeta}
+        camposNumericos.forEach(campo => {
+          if (!payload[campo] || payload[campo] === 0) {
+            if (rowExist && rowExist[campo]) payload[campo] = rowExist[campo]
+            else delete payload[campo]
+          }
+        })
+
         let error
         if (rowExist) {
           const {error: e} = await supabase.from('datos_diarios')
             .update({
-              ...datosSinMeta,
+              ...payload,
               usuario_nombre: usuario?.nombre,
               updated_at: new Date().toISOString(),
-              saldo_banco: datosDia.saldo_banco || rowExist.saldo_banco,
             })
             .eq('id', rowExist.id)
           error = e
