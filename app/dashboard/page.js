@@ -1040,6 +1040,7 @@ export default function Dashboard() {
                   <option value="efectivo">Efectivo</option>
                   <option value="transferencias">Transferencias</option>
                   <option value="saldo_banco">Banco</option>
+                  <option value="cheque_recibido">Cheques</option>
                 </select>
               </div>
               <div>
