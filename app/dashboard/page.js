@@ -207,7 +207,7 @@ export default function Dashboard() {
     const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo>0?r.efectivo:0), 0)
     const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias>0?r.transferencias:0), 0)
     const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido>0?r.cheque_recibido:0), 0)
-    const saldoBancoUlt = rowsAcum.length > 0 ? (rowsAcum[0].saldo_banco || 0) : 0
+    const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco>0?r.saldo_banco:0), 0)
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
     const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt - totalGastosAcum
     console.log('[FOMO] efectivo_acum:', efectivoAcum)
@@ -851,7 +851,7 @@ export default function Dashboard() {
             {[
               {l:'Efectivo acumulado', v:acumData.efectivo, c:'#3ddc84'},
               {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
-              {l:'Saldo banco (último)', v:acumData.saldoBanco, c:'#3ddc84'},
+              {l:'Banco acumulado', v:acumData.saldoBanco, c:'#3ddc84'},
               {l:'Gastos registrados', v:-acumData.gastos, c:C.red},
             ].map((r,i) => (
               <div key={i} style={S.row}>
