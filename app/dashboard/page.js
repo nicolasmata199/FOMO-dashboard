@@ -177,7 +177,7 @@ export default function Dashboard() {
       supabase.from('historial').select('*').order('created_at',{ascending:false}).limit(20),
       supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()),
       supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(30),
-      supabase.from('datos_diarios').select('fecha,ventas_695,ventas_642,ventas_sanjuan').gte('fecha',inicioMesStr).order('fecha'),
+      supabase.from('datos_diarios').select('*').gte('fecha',inicioMesStr).order('fecha'),
       supabase.from('vencimientos').select('*').eq('pagado',true).order('fecha_pago',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('*').lte('fecha',hoyStr()).order('fecha',{ascending:false}),
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
@@ -221,23 +221,22 @@ export default function Dashboard() {
 
     const rowsMes = ddMes.data || []
     const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
-    setVentasMes(totalVentasMes)
+    const ventasAcumMes = rowsMes.reduce((s,r) =>
+      s + (r.efectivo||0) + (r.transferencias||0) + (r.saldo_banco||0) + (r.cheque_recibido||0), 0)
+    setVentasMes(ventasAcumMes)
     const diasCon = rowsMes.filter(r => ((r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)) > 0).length
     setDiasConDatos(diasCon)
 
     const rowsHoy = ddHoy.data || []
     const rowsRecientes = ddReciente.data || []
-    const mejorVentas = rowsRecientes.find(x => (x.ventas_acumuladas_mes||0) > 0)?.ventas_acumuladas_mes || 0
     if (rowsHoy.length > 0) {
       const r = rowsHoy[0]
-      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
-      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
+      setDatosHoy({...r, ventas_acumuladas_mes: ventasAcumMes})
       const tieneDataReal = (r.efectivo||0) > 0 || (r.transferencias||0) > 0 || (r.ventas_695||0) > 0 || (r.ventas_642||0) > 0 || (r.ventas_sanjuan||0) > 0
       setFechaDatosHoy(tieneDataReal ? hoyStr() : (rowsRecientes.length > 0 ? rowsRecientes[0].fecha : hoyStr()))
     } else if (rowsRecientes.length > 0) {
       const r = rowsRecientes.find(x => x.usuario_id === currentUid) || rowsRecientes[0]
-      const ventas = (r.ventas_acumuladas_mes||0) > 0 ? r.ventas_acumuladas_mes : mejorVentas
-      setDatosHoy({...r, ventas_acumuladas_mes: ventas})
+      setDatosHoy({...r, ventas_acumuladas_mes: ventasAcumMes})
       setFechaDatosHoy(rowsRecientes[0].fecha)  // siempre la fecha más reciente sin importar usuario
     }
   }
