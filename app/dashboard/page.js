@@ -557,6 +557,23 @@ export default function Dashboard() {
     await loadAll()
   }
 
+  async function pagarDeuda(deuda) {
+    const input = prompt(`Pago parcial — ${deuda.descripcion}\nDeuda actual: ${fmt(deuda.monto)}\n\nMonto pagado hoy:`)
+    if (!input) return
+    const pago = parseFloat(String(input).replace(/\./g,'').replace(',','.'))
+    if (!pago || pago <= 0) return
+    const supabase = getSupabase()
+    const nuevoMonto = deuda.monto - pago
+    if (nuevoMonto <= 0) {
+      await supabase.from('deudas').update({ activa: false, monto: 0 }).eq('id', deuda.id)
+      await logH('UPDATE', `Deuda saldada: ${deuda.descripcion} — último pago: ${fmt(pago)}`)
+    } else {
+      await supabase.from('deudas').update({ monto: nuevoMonto }).eq('id', deuda.id)
+      await logH('UPDATE', `Pago parcial ${deuda.descripcion}: -${fmt(pago)} → saldo ${fmt(nuevoMonto)}`)
+    }
+    await loadAll()
+  }
+
   async function logout() {
     const supabase = getSupabase()
     await supabase.auth.signOut()
@@ -1221,6 +1238,7 @@ export default function Dashboard() {
                       <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace'}}>sin fecha · {d.usuario_nombre}</div>
                     </div>
                     <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:'#fb923c',flexShrink:0}}>{fmt(d.monto)}</span>
+                    <button style={{background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',color:'#4ade80',cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>pagarDeuda(d)}>$ Pagar</button>
                     <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
                   </div>
                 ))}
@@ -1244,6 +1262,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,flexShrink:0}}>{fmt(d.monto)}</span>
+                <button style={{background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',color:'#4ade80',cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>pagarDeuda(d)}>$ Pagar</button>
                 <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
               </div>
             ))}
