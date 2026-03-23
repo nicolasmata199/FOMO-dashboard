@@ -98,6 +98,7 @@ export default function Dashboard() {
   const [stock, setStock] = useState([])
   const [historial, setHistorial] = useState([])
   const [historialDias, setHistorialDias] = useState([])
+  const [historialSearch, setHistorialSearch] = useState('')
   const [userId, setUserId] = useState(null)
   const [ventasMes, setVentasMes] = useState(0)
   const [diasConDatos, setDiasConDatos] = useState(0)
@@ -174,7 +175,7 @@ export default function Dashboard() {
       supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
       supabase.from('proveedores').select('*').order('deuda_actual',{ascending:false}),
       supabase.from('stock').select('*').order('categoria'),
-      supabase.from('historial').select('*').order('created_at',{ascending:false}).limit(20),
+      supabase.from('historial').select('*').order('created_at',{ascending:false}).limit(200),
       supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()),
       supabase.from('datos_diarios').select('*').order('fecha',{ascending:false}).limit(30),
       supabase.from('datos_diarios').select('*').gte('fecha',inicioMesStr).order('fecha'),
@@ -750,6 +751,7 @@ export default function Dashboard() {
     {id:'pagos',icon:'⚡',label:'PAGOS'},
     {id:'pl',icon:'≋',label:'P&L'},
     {id:'flujo',icon:'→',label:'FLUJO'},
+    {id:'historial',icon:'☰',label:'LOG'},
     {id:'mas',icon:'···',label:'MÁS'},
   ]
 
@@ -1502,6 +1504,57 @@ export default function Dashboard() {
             <span style={{color:C.green}}>●</span> Verde = acumulado {'>'} $1.000.000&nbsp;&nbsp;
             <span style={{color:C.accent}}>●</span> Amarillo = acumulado entre $0 y $1.000.000&nbsp;&nbsp;
             <span style={{color:C.red}}>●</span> Rojo = acumulado negativo
+          </div>
+        </div>
+      )}
+
+      {/* HISTORIAL */}
+      {tab === 'historial' && (
+        <div className="fomo-content" style={S.page}>
+          <div style={S.sec}>Historial de movimientos</div>
+          <input
+            type="text"
+            style={{...S.inp, marginBottom:'14px'}}
+            placeholder="Buscar por descripción o usuario..."
+            value={historialSearch}
+            onChange={e=>setHistorialSearch(e.target.value)}
+          />
+          <div style={S.card}>
+            {historial
+              .filter(h => {
+                if (!historialSearch) return true
+                const q = historialSearch.toLowerCase()
+                return (h.descripcion||'').toLowerCase().includes(q) || (h.usuario_nombre||'').toLowerCase().includes(q)
+              })
+              .map((h,i,arr) => {
+                const accion = h.accion || (
+                  /Agregó|Registró/.test(h.descripcion) ? 'INSERT' :
+                  /Eliminó|Pasado/.test(h.descripcion) ? 'DELETE' : 'UPDATE'
+                )
+                const badgeColor = accion === 'INSERT' ? '#3ddc84' : accion === 'DELETE' ? '#ff5050' : '#f5a623'
+                const badgeLabel = accion === 'INSERT' ? 'NUEVO' : accion === 'DELETE' ? 'BAJA' : 'EDIT'
+                return (
+                  <div key={i} style={{...S.row,...(i===arr.length-1?{borderBottom:'none'}:{}),alignItems:'flex-start',gap:'10px'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
+                        <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:badgeColor+'22',color:badgeColor,flexShrink:0}}>{badgeLabel}</span>
+                        <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre}</span>
+                      </div>
+                      <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
+                    </div>
+                    <span style={{fontSize:'9px',color:C.muted,fontFamily:'monospace',flexShrink:0,textAlign:'right',lineHeight:1.4}}>
+                      {new Date(h.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}<br/>
+                      {new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}
+                    </span>
+                  </div>
+                )
+              })
+            }
+            {historial.filter(h=>{
+              if (!historialSearch) return true
+              const q = historialSearch.toLowerCase()
+              return (h.descripcion||'').toLowerCase().includes(q)||(h.usuario_nombre||'').toLowerCase().includes(q)
+            }).length === 0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'12px 0'}}>Sin resultados</p>}
           </div>
         </div>
       )}
