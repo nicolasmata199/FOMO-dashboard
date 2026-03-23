@@ -652,7 +652,7 @@ export default function Dashboard() {
 
   // Flujo 33 días (hoy-3 a hoy+29)
   const tablaFlujo = []
-  let acumFlujo = liquidoHoy
+  let acumFlujo = 0
   const hoyBase = new Date()
   const hY = hoyBase.getFullYear(), hM = hoyBase.getMonth(), hD = hoyBase.getDate()
   const hoyStr0 = `${hY}-${String(hM+1).padStart(2,'0')}-${String(hD).padStart(2,'0')}`
@@ -679,6 +679,7 @@ export default function Dashboard() {
     const esPasadoOAyer = fechaStr < hoyStr0  // cualquier día antes de hoy
     const esHoy         = fechaStr === hoyStr0
     const esDomingo     = fecha.getDay() === 0
+    if (i === 0) acumFlujo = liquidoHoy
     // REGLA CONTABLE: pasado = hecho real (o $0 si no se cargó). Nunca proyectar el pasado.
     // Solo proyectar desde hoy en adelante.
     let entradas = 0
