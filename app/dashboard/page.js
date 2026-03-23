@@ -1168,6 +1168,7 @@ export default function Dashboard() {
               <option value="efectivo_banco">Efectivo → Banco</option>
               <option value="transferencia_efectivo">Transferencia → Efectivo</option>
               <option value="efectivo_transferencia">Efectivo → Transferencia</option>
+              <option value="transferencia_banco">Transferencia → Banco</option>
             </select>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
               <div>
