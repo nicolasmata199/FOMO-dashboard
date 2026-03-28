@@ -408,10 +408,26 @@ export default function Dashboard() {
       const campo = medio === 'efectivo' ? 'efectivo' : medio === 'transferencia' ? 'transferencias' : 'saldo_banco'
       const {data: rowHoy} = await supabase.from('datos_diarios').select('*').eq('fecha',hoyStr()).order('id',{ascending:false}).limit(1).single()
       if (rowHoy) {
-        await supabase.from('datos_diarios').update({[campo]: (rowHoy[campo]||0) - montoPagado}).eq('id',rowHoy.id)
+        await supabase.from('datos_diarios')
+          .update({[campo]: (rowHoy[campo]||0) - montoPagado})
+          .eq('id', rowHoy.id)
       } else {
-          // No existe registro de hoy — no crear uno vacío, solo loguear
-          await logH('UPDATE', `Sin registro de hoy para descontar pago — ${campo}: ${fmt(montoPagado)}`)
+        // No existe registro de hoy — crear uno nuevo solo con el descuento
+        await supabase.from('datos_diarios').insert({
+          fecha: hoyStr(),
+          usuario_id: userId,
+          usuario_nombre: usuario?.nombre,
+          efectivo: campo === 'efectivo' ? -montoPagado : 0,
+          transferencias: campo === 'transferencias' ? -montoPagado : 0,
+          saldo_banco: campo === 'saldo_banco' ? -montoPagado : 0,
+          cheque_recibido: 0,
+          tarjeta_pendiente: 0,
+          tarjeta_acreditada: false,
+          ventas_695: 0,
+          ventas_642: 0,
+          ventas_sanjuan: 0,
+          notas: `Pago registrado: ${venc.descripcion}`
+        })
       }
     } else if (medio === 'cheque') {
       for (const ch of cheques) {
