@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [acumData, setAcumData] = useState({efectivo:0,transferencias:0,saldoBanco:0,gastos:0})
   const [liquidoTotal, setLiquidoTotal] = useState(0)
   const [gastosFlujoData, setGastosFlujoData] = useState([])
+  const [gastosMes, setGastosMes] = useState([])
   const [tarjetaAcumulada, setTarjetaAcumulada] = useState(0)
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
@@ -169,7 +170,7 @@ export default function Dashboard() {
     const flIni = new Date(hY0,hM0,hD0-3), flFin = new Date(hY0,hM0,hD0+29)
     const flIniStr = `${flIni.getFullYear()}-${String(flIni.getMonth()+1).padStart(2,'0')}-${String(flIni.getDate()).padStart(2,'0')}`
     const flFinStr = `${flFin.getFullYear()}-${String(flFin.getMonth()+1).padStart(2,'0')}-${String(flFin.getDate()).padStart(2,'0')}`
-    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum, gFlujo, tPend] = await Promise.all([
+    const [v, d, g, p, s, h, ddHoy, ddReciente, ddMes, vPagados, ddAcum, gAcum, gFlujo, tPend, gMes] = await Promise.all([
       supabase.from('vencimientos').select('*').eq('pagado',false).order('fecha'),
       supabase.from('deudas').select('*').eq('activa',true).order('monto',{ascending:false}),
       supabase.from('gastos').select('*').eq('fecha',hoyStr()).order('created_at',{ascending:false}),
@@ -184,6 +185,7 @@ export default function Dashboard() {
       supabase.from('gastos').select('monto').lte('fecha',hoyStr()),
       supabase.from('gastos').select('fecha,monto,descripcion,categoria').gte('fecha',flIniStr).lte('fecha',flFinStr),
       supabase.from('datos_diarios').select('tarjeta_pendiente,tarjeta_acreditada').eq('tarjeta_acreditada',false).gt('tarjeta_pendiente',0),
+      supabase.from('gastos').select('monto,categoria,descripcion,fecha').gte('fecha',inicioMesStr).lte('fecha',hoyStr()).order('fecha',{ascending:false}),
     ])
     if (v.data) setVencimientos(v.data)
     if (d.data) setDeudas(d.data)
@@ -198,6 +200,7 @@ export default function Dashboard() {
     }
     if (vPagados.data) setVencPagados(vPagados.data)
     if (gFlujo.data) setGastosFlujoData(gFlujo.data)
+    if (gMes.data) setGastosMes(gMes.data)
     const totalTarjetaPendiente = (tPend.data||[]).reduce((s,r) => s+(r.tarjeta_pendiente||0), 0)
     setTarjetaAcumulada(totalTarjetaPendiente)
 
@@ -1467,6 +1470,29 @@ export default function Dashboard() {
             ))}
           </div>
 
+          <div style={S.sec}>Gastos operativos del mes</div>
+          <div style={S.card}>
+            {gastosMes.length === 0 ? (
+              <div style={{color:C.muted, fontSize:'12px', textAlign:'center', padding:'8px'}}>Sin gastos registrados este mes</div>
+            ) : (
+              <>
+                {gastosMes.map((g,i) => (
+                  <div key={i} style={{...S.row,...(i===gastosMes.length-1?{borderBottom:'none'}:{})}}>
+                    <div>
+                      <div style={{fontSize:'12px'}}>{g.descripcion}</div>
+                      <div style={{fontSize:'10px',color:C.muted}}>{g.categoria} · {g.fecha.split('-').reverse().join('/')}</div>
+                    </div>
+                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(g.monto)}</span>
+                  </div>
+                ))}
+                <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
+                  <span>Total gastos mes</span>
+                  <span style={{fontFamily:'monospace',color:C.red}}>−{fmt(gastosMes.reduce((s,g)=>s+g.monto,0))}</span>
+                </div>
+              </>
+            )}
+          </div>
+
           <div style={S.sec}>Stock valorizado</div>
           <div style={S.card}>
             {stock.map((s,i)=>(
@@ -1489,6 +1515,63 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          <div style={S.sec}>Estado de Situación Patrimonial</div>
+
+          {/* ACTIVO */}
+          <div style={{...S.card, marginBottom:'8px'}}>
+            <div style={{fontSize:'11px',fontWeight:700,color:C.green,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'10px'}}>ACTIVO</div>
+            {[
+              {l:'Efectivo en caja', v:acumData.efectivo},
+              {l:'Transferencias', v:acumData.transferencias},
+              {l:'Saldo banco', v:acumData.saldoBanco},
+              {l:'Cheques a cobrar', v:acumData.cheque},
+              {l:'Stock valorizado', v:stockValor},
+            ].map((r,i)=>(
+              <div key={i} style={S.row}>
+                <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.green}}>{fmt(r.v)}</span>
+              </div>
+            ))}
+            <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
+              <span>TOTAL ACTIVO</span>
+              <span style={{fontFamily:'monospace',color:C.green}}>{fmt(acumData.efectivo+acumData.transferencias+acumData.saldoBanco+acumData.cheque+stockValor)}</span>
+            </div>
+          </div>
+
+          {/* PASIVO */}
+          <div style={{...S.card, marginBottom:'8px'}}>
+            <div style={{fontSize:'11px',fontWeight:700,color:C.red,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'10px'}}>PASIVO</div>
+            {[
+              {l:'Deudas activas', v:deudas.reduce((s,d)=>s+(d.monto||0),0)},
+              {l:'Vencimientos pendientes', v:vencimientos.reduce((s,v)=>s+(v.monto||0),0)},
+              {l:'Deuda proveedores', v:proveedores.reduce((s,p)=>s+(p.deuda_actual||0),0)},
+            ].map((r,i)=>(
+              <div key={i} style={S.row}>
+                <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
+                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(r.v)}</span>
+              </div>
+            ))}
+            <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
+              <span>TOTAL PASIVO</span>
+              <span style={{fontFamily:'monospace',color:C.red}}>−{fmt(deudas.reduce((s,d)=>s+(d.monto||0),0)+vencimientos.reduce((s,v)=>s+(v.monto||0),0)+proveedores.reduce((s,p)=>s+(p.deuda_actual||0),0))}</span>
+            </div>
+          </div>
+
+          {/* PATRIMONIO NETO */}
+          {(()=>{
+            const totalActivo = acumData.efectivo+acumData.transferencias+acumData.saldoBanco+acumData.cheque+stockValor
+            const totalPasivo = deudas.reduce((s,d)=>s+(d.monto||0),0)+vencimientos.reduce((s,v)=>s+(v.monto||0),0)+proveedores.reduce((s,p)=>s+(p.deuda_actual||0),0)
+            const pn = totalActivo - totalPasivo
+            return (
+              <div style={{...S.card,border:`1px solid ${pn>=0?'rgba(61,220,132,0.3)':'rgba(255,80,80,0.3)'}`,background:pn>=0?'rgba(61,220,132,0.05)':'rgba(255,80,80,0.05)'}}>
+                <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'14px'}}>
+                  <span>PATRIMONIO NETO</span>
+                  <span style={{fontFamily:'monospace',color:pn>=0?C.green:C.red}}>{fmt(pn)}</span>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
