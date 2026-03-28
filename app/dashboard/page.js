@@ -116,6 +116,7 @@ export default function Dashboard() {
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
   const [fAjuste, setFAjuste] = useState({campo:'efectivo', monto:'', motivo:''})
+  const [filtroLog, setFiltroLog] = useState('todos')
   const [modal, setModal] = useState('')
   const MP0 = {venc:null,paso:1,opcion:null,montoInput:'',nuevoMonto:'',nuevaFecha:'',medio:null,cuotas:1,cheques:[{monto:'',fecha:''}],interesInput:'0',notaInput:'',subopcionD:null}
   const [modalPago, setModalPago] = useState(MP0)
@@ -368,7 +369,17 @@ export default function Dashboard() {
           }
 
           const esHoy = fechaCarga === hoyStr()
-          await logH(esHoy?'UPDATE':'EDIT', `${esHoy?'Actualizó':'Modificó'} datos del ${fechaCarga}`)
+          const resumen = []
+          if (datosDia.efectivo) resumen.push(`efectivo: ${fmt(datosDia.efectivo)}`)
+          if (datosDia.transferencias) resumen.push(`transf: ${fmt(datosDia.transferencias)}`)
+          if (datosDia.saldo_banco) resumen.push(`banco: ${fmt(datosDia.saldo_banco)}`)
+          if (datosDia.cheque_recibido) resumen.push(`cheque: ${fmt(datosDia.cheque_recibido)}`)
+          if (datosDia.ventas_695) resumen.push(`695: ${fmt(datosDia.ventas_695)}`)
+          if (datosDia.ventas_642) resumen.push(`642: ${fmt(datosDia.ventas_642)}`)
+          if (datosDia.ventas_sanjuan) resumen.push(`SJ: ${fmt(datosDia.ventas_sanjuan)}`)
+          if (datosDia.ventas_redes) resumen.push(`redes: ${fmt(datosDia.ventas_redes)}`)
+          if (datosDia.ventas_creditos) resumen.push(`créditos: ${fmt(datosDia.ventas_creditos)}`)
+          await logH(esHoy?'UPDATE':'EDIT', `${esHoy?'Cargó':'Editó'} datos ${fechaCarga} — ${resumen.join(', ') || 'sin cambios'}`)
           const savedRow = {...datosSinMeta, fecha:fechaCarga, usuario_id:userId, usuario_nombre:usuario?.nombre}
           if (esHoy || !fechaDatosHoy || fechaCarga >= fechaDatosHoy) {
             setDatosHoy(savedRow)
@@ -594,7 +605,7 @@ export default function Dashboard() {
     await supabase.from('datos_diarios')
       .update({ [fAjuste.campo]: (rowHoy[fAjuste.campo]||0) + monto })
       .eq('id', rowHoy.id)
-    await logH('UPDATE', `Ajuste ${fAjuste.campo}: ${monto > 0 ? '+' : ''}${fmt(monto)} — Motivo: ${fAjuste.motivo}`)
+    await logH('UPDATE', `⚡ AJUSTE CAJA — ${fAjuste.campo}: ${monto > 0 ? '+' : ''}${fmt(monto)} — Motivo: ${fAjuste.motivo} — por ${usuario?.nombre}`)
     setFAjuste({campo:'efectivo', monto:'', motivo:''})
     setMsg('✓ Ajuste guardado')
     setTimeout(()=>setMsg(''),2000)
@@ -652,7 +663,7 @@ export default function Dashboard() {
       }
     }
 
-    await logH('INSERT', `Registró gasto: ${fGasto.descripcion} — ${fmt(montoGasto)} via ${fGasto.medio}`)
+    await logH('INSERT', `💸 GASTO — ${fGasto.descripcion}: ${fmt(montoGasto)} via ${fGasto.medio} — por ${usuario?.nombre}`)
     setFGasto({descripcion:'',monto:'',categoria:'stock',medio:'efectivo'})
     await loadAll()
     setMsg('✓ Gasto registrado')
@@ -1746,6 +1757,18 @@ export default function Dashboard() {
       {tab === 'historial' && (
         <div className="fomo-content" style={S.page}>
           <div style={S.sec}>Historial de movimientos</div>
+          <div style={{display:'flex',gap:'6px',marginBottom:'12px',flexWrap:'wrap'}}>
+            {['todos','UPDATE','INSERT','DELETE'].map(f=>(
+              <button key={f} onClick={()=>setFiltroLog(f)}
+                style={{fontSize:'10px',fontWeight:700,padding:'4px 10px',borderRadius:'6px',border:'none',cursor:'pointer',
+                  background: filtroLog===f ? '#f5a623' : 'rgba(255,255,255,0.08)',
+                  color: filtroLog===f ? '#000' : C.muted,
+                  fontFamily:'monospace'
+                }}>
+                {f==='todos'?'TODOS':f==='UPDATE'?'EDITS':f==='INSERT'?'NUEVOS':'BAJAS'}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             style={{...S.inp, marginBottom:'14px'}}
@@ -1755,6 +1778,7 @@ export default function Dashboard() {
           />
           <div style={S.card}>
             {historial
+              .filter(h => filtroLog === 'todos' || h.accion === filtroLog)
               .filter(h => {
                 if (!historialSearch) return true
                 const q = historialSearch.toLowerCase()
@@ -1784,7 +1808,7 @@ export default function Dashboard() {
                 )
               })
             }
-            {historial.filter(h=>{
+            {historial.filter(h=>filtroLog==='todos'||h.accion===filtroLog).filter(h=>{
               if (!historialSearch) return true
               const q = historialSearch.toLowerCase()
               return (h.descripcion||'').toLowerCase().includes(q)||(h.usuario_nombre||'').toLowerCase().includes(q)
