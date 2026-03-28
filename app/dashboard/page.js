@@ -276,7 +276,7 @@ export default function Dashboard() {
       try {
         lastSaveRef.current = Date.now()
         const supabase = getSupabase()
-        const {id:_id, created_at:_ca, ...datosSinMeta} = datosDia
+        const {id:_id, created_at:_ca, medio_cobro_credito:_mcc, medio_costo_credito:_mcosto, ...datosSinMeta} = datosDia
         const {data: rowExist} = await supabase.from('datos_diarios')
           .select('*')
           .eq('fecha', fechaCarga)
