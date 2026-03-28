@@ -1191,6 +1191,9 @@ export default function Dashboard() {
               value={datosDia.notas||''} onChange={e => setDatosDia({...datosDia, notas:e.target.value})}/>
           </div>
           <div style={S.secAjuste}>Ajuste de caja</div>
+          <div style={{fontSize:'11px',color:C.muted,marginBottom:'8px',fontFamily:'monospace'}}>
+            ⚡ El ajuste siempre impacta en el día de HOY ({hoyStr().split('-').reverse().join('/')})
+          </div>
           <div style={S.card}>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'10px'}}>
               <div>
