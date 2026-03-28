@@ -89,7 +89,7 @@ export default function Dashboard() {
 
   const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:'',tarjeta_acreditada:false,tarjeta_monto_real:0})
   const [fechaDatosHoy, setFechaDatosHoy] = useState(null)
-  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:''})
+  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',notas:''})
   const [vencimientos, setVencimientos] = useState([])
   const [vencPagados, setVencPagados] = useState([])
   const [deudas, setDeudas] = useState([])
@@ -259,7 +259,7 @@ export default function Dashboard() {
     const {data: gas} = await supabase.from('gastos').select('*').eq('fecha',fecha).order('created_at',{ascending:false})
     const data = conId
     if (data) setDatosDia(data)
-    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:''})
+    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',notas:''})
     if (gas) setGastos(gas)
   }
 
@@ -317,6 +317,26 @@ export default function Dashboard() {
           setMsg('❌ Error: ' + error.message)
           setTimeout(()=>setMsg(''),5000)
         } else {
+          // Descontar costo_creditos del medio de pago correspondiente
+          const costoNuevo = Number(datosDia.costo_creditos || 0)
+          const costoAnterior = Number(rowExist?.costo_creditos || 0)
+          const diferenciaCosto = costoNuevo - costoAnterior
+          const medioCosto = datosDia.medio_costo_credito || 'efectivo'
+
+          if (diferenciaCosto > 0) {
+            const {data: rowActual} = await supabase.from('datos_diarios')
+              .select('*')
+              .eq('fecha', fechaCarga)
+              .order('id', {ascending: false})
+              .limit(1)
+              .single()
+            if (rowActual) {
+              await supabase.from('datos_diarios')
+                .update({ [medioCosto]: (rowActual[medioCosto] || 0) - diferenciaCosto })
+                .eq('id', rowActual.id)
+            }
+          }
+
           const esHoy = fechaCarga === hoyStr()
           await logH(esHoy?'UPDATE':'EDIT', `${esHoy?'Actualizó':'Modificó'} datos del ${fechaCarga}`)
           const savedRow = {...datosSinMeta, fecha:fechaCarga, usuario_id:userId, usuario_nombre:usuario?.nombre}
@@ -1105,15 +1125,27 @@ export default function Dashboard() {
               {label:'Redes sociales ($)', key:'ventas_redes', hint:'Ventas por Instagram/WhatsApp'},
               {label:'Créditos — total cobrado ($)', key:'ventas_creditos', hint:'Total cobrado (capital + comisiones)'},
               {label:'Créditos — costo del dinero ($)', key:'costo_creditos', hint:'Capital prestado (costo)'},
+              {label:'Medio pago del costo', key:'medio_costo_credito', tipo:'select', opciones:[
+                {value:'efectivo', label:'Efectivo'},
+                {value:'transferencias', label:'Transferencia'},
+                {value:'saldo_banco', label:'Banco'},
+              ]},
             ].map(f => (
               <div key={f.key} style={{marginBottom:'12px'}}>
                 <label style={S.label}>{f.label}</label>
                 {f.hint && <div style={{fontSize:'10px',color:C.muted,marginBottom:'4px',fontFamily:'monospace'}}>{f.hint}</div>}
-                <input type="text" inputMode="numeric" style={S.inp}
-                  value={fmtInput(datosDia[f.key])}
-                  placeholder="0"
-                  onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value.replace(/\./g,''))||0})}
-                />
+                {f.tipo === 'select' ? (
+                  <select style={S.sel} value={datosDia[f.key]||'efectivo'}
+                    onChange={e => setDatosDia({...datosDia, [f.key]: e.target.value})}>
+                    {f.opciones.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : (
+                  <input type="text" inputMode="numeric" style={S.inp}
+                    value={fmtInput(datosDia[f.key])}
+                    placeholder="0"
+                    onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value.replace(/\./g,''))||0})}
+                  />
+                )}
               </div>
             ))}
             <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
