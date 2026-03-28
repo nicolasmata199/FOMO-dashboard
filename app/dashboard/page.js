@@ -110,7 +110,7 @@ export default function Dashboard() {
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
   const [fDeuda, setFDeuda] = useState({descripcion:'',monto:'',tipo:'tarjeta'})
   const [fechaCarga, setFechaCarga] = useState(hoyStr())
-  const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock'})
+  const [fGasto, setFGasto] = useState({descripcion:'',monto:'',categoria:'stock',medio:'efectivo'})
   const [fCambio, setFCambio] = useState({tipo:'cheque_efectivo',monto_original:'',monto_recibido:'',descripcion:''})
   const [fPagoSucursal, setFPagoSucursal] = useState({sucursal:'695',descripcion:'',monto:'',categoria:'stock'})
   const [fAjuste, setFAjuste] = useState({campo:'efectivo', monto:'', motivo:''})
@@ -549,9 +549,56 @@ export default function Dashboard() {
   async function agregarGasto() {
     if (!fGasto.descripcion || !fGasto.monto) return
     const supabase = getSupabase()
-    await supabase.from('gastos').insert({...fGasto, monto:parseFloat(fGasto.monto), fecha:fechaCarga, usuario_nombre:usuario?.nombre})
-    await logH('INSERT', `Registró gasto: ${fGasto.descripcion} — ${fmt(parseFloat(fGasto.monto))}`)
-    setFGasto({descripcion:'',monto:'',categoria:'stock'})
+    const montoGasto = parseFloat(fGasto.monto)
+
+    await supabase.from('gastos').insert({
+      ...fGasto,
+      monto: montoGasto,
+      fecha: fechaCarga,
+      usuario_nombre: usuario?.nombre
+    })
+
+    // Descontar del campo correcto en datos_diarios
+    if (fGasto.medio && fGasto.medio !== 'ninguno') {
+      const campo = fGasto.medio === 'efectivo' ? 'efectivo'
+        : fGasto.medio === 'transferencia' ? 'transferencias'
+        : fGasto.medio === 'banco' ? 'saldo_banco'
+        : null
+
+      if (campo) {
+        const {data: rowHoy} = await supabase.from('datos_diarios')
+          .select('*')
+          .eq('fecha', fechaCarga)
+          .order('id', {ascending: false})
+          .limit(1)
+          .single()
+
+        if (rowHoy) {
+          await supabase.from('datos_diarios')
+            .update({[campo]: (rowHoy[campo]||0) - montoGasto})
+            .eq('id', rowHoy.id)
+        } else {
+          await supabase.from('datos_diarios').insert({
+            fecha: fechaCarga,
+            usuario_id: userId,
+            usuario_nombre: usuario?.nombre,
+            efectivo: campo === 'efectivo' ? -montoGasto : 0,
+            transferencias: campo === 'transferencias' ? -montoGasto : 0,
+            saldo_banco: campo === 'saldo_banco' ? -montoGasto : 0,
+            cheque_recibido: 0,
+            tarjeta_pendiente: 0,
+            tarjeta_acreditada: false,
+            ventas_695: 0,
+            ventas_642: 0,
+            ventas_sanjuan: 0,
+            notas: `Gasto: ${fGasto.descripcion}`
+          })
+        }
+      }
+    }
+
+    await logH('INSERT', `Registró gasto: ${fGasto.descripcion} — ${fmt(montoGasto)} via ${fGasto.medio}`)
+    setFGasto({descripcion:'',monto:'',categoria:'stock',medio:'efectivo'})
     await loadAll()
     setMsg('✓ Gasto registrado')
     setTimeout(()=>setMsg(''),2000)
@@ -1171,6 +1218,16 @@ export default function Dashboard() {
                   <option value="otro">Otro</option>
                 </select>
               </div>
+            </div>
+            <div style={{marginBottom:'10px'}}>
+              <label style={S.label}>Medio de pago</label>
+              <select style={S.sel} value={fGasto.medio}
+                onChange={e=>setFGasto({...fGasto,medio:e.target.value})}>
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="banco">Banco</option>
+                <option value="ninguno">Sin impacto en caja</option>
+              </select>
             </div>
             <button style={{...S.btn,marginTop:'12px',background:'transparent',border:'1px solid rgba(255,255,255,0.13)',color:C.text}} onClick={agregarGasto}>
               + Registrar gasto
