@@ -89,7 +89,7 @@ export default function Dashboard() {
 
   const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:'',tarjeta_acreditada:false,tarjeta_monto_real:0})
   const [fechaDatosHoy, setFechaDatosHoy] = useState(null)
-  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',notas:''})
+  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',medio_cobro_credito:'efectivo',notas:''})
   const [vencimientos, setVencimientos] = useState([])
   const [vencPagados, setVencPagados] = useState([])
   const [deudas, setDeudas] = useState([])
@@ -259,7 +259,7 @@ export default function Dashboard() {
     const {data: gas} = await supabase.from('gastos').select('*').eq('fecha',fecha).order('created_at',{ascending:false})
     const data = conId
     if (data) setDatosDia(data)
-    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',notas:''})
+    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,medio_costo_credito:'efectivo',medio_cobro_credito:'efectivo',notas:''})
     if (gas) setGastos(gas)
   }
 
@@ -334,6 +334,26 @@ export default function Dashboard() {
               await supabase.from('datos_diarios')
                 .update({ [medioCosto]: (rowActual[medioCosto] || 0) - diferenciaCosto })
                 .eq('id', rowActual.id)
+            }
+          }
+
+          // Sumar cobro de créditos al medio de cobro correspondiente
+          const cobroNuevo = Number(datosDia.ventas_creditos || 0)
+          const cobroAnterior = Number(rowExist?.ventas_creditos || 0)
+          const diferenciaCobro = cobroNuevo - cobroAnterior
+          const medioCobro = datosDia.medio_cobro_credito || 'efectivo'
+
+          if (diferenciaCobro > 0) {
+            const {data: rowActual2} = await supabase.from('datos_diarios')
+              .select('*')
+              .eq('fecha', fechaCarga)
+              .order('id', {ascending: false})
+              .limit(1)
+              .single()
+            if (rowActual2) {
+              await supabase.from('datos_diarios')
+                .update({ [medioCobro]: (rowActual2[medioCobro] || 0) + diferenciaCobro })
+                .eq('id', rowActual2.id)
             }
           }
 
@@ -1124,6 +1144,12 @@ export default function Dashboard() {
               {label:'Ventas San Juan 655 — hoy ($)', key:'ventas_sanjuan'},
               {label:'Redes sociales ($)', key:'ventas_redes', hint:'Ventas por Instagram/WhatsApp'},
               {label:'Créditos — total cobrado ($)', key:'ventas_creditos', hint:'Total cobrado (capital + comisiones)'},
+              {label:'Medio cobro del crédito', key:'medio_cobro_credito', tipo:'select', opciones:[
+                {value:'efectivo', label:'Efectivo'},
+                {value:'transferencias', label:'Transferencia'},
+                {value:'saldo_banco', label:'Banco'},
+                {value:'cheque_recibido', label:'Cheque'},
+              ]},
               {label:'Créditos — costo del dinero ($)', key:'costo_creditos', hint:'Capital prestado (costo)'},
               {label:'Medio pago del costo', key:'medio_costo_credito', tipo:'select', opciones:[
                 {value:'efectivo', label:'Efectivo'},
