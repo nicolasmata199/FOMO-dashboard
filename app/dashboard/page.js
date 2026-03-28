@@ -87,9 +87,9 @@ export default function Dashboard() {
   const [tab, setTab] = useState('hoy')
   const [loading, setLoading] = useState(true)
 
-  const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:'',tarjeta_acreditada:false,tarjeta_monto_real:0})
+  const [datosHoy, setDatosHoy] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_acumuladas_mes:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:'',tarjeta_acreditada:false,tarjeta_monto_real:0})
   const [fechaDatosHoy, setFechaDatosHoy] = useState(null)
-  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:''})
+  const [datosDia, setDatosDia] = useState({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:''})
   const [vencimientos, setVencimientos] = useState([])
   const [vencPagados, setVencPagados] = useState([])
   const [deudas, setDeudas] = useState([])
@@ -106,6 +106,7 @@ export default function Dashboard() {
   const [liquidoTotal, setLiquidoTotal] = useState(0)
   const [gastosFlujoData, setGastosFlujoData] = useState([])
   const [gastosMes, setGastosMes] = useState([])
+  const [gananciaCreditos, setGananciaCreditos] = useState(0)
   const [tarjetaAcumulada, setTarjetaAcumulada] = useState(0)
 
   const [fVenc, setFVenc] = useState({fecha:'',descripcion:'',monto:'',tipo:'cheque'})
@@ -224,9 +225,10 @@ export default function Dashboard() {
     setLiquidoTotal(totalLiquido)
 
     const rowsMes = ddMes.data || []
-    const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0), 0)
+    const totalVentasMes = rowsMes.reduce((sum,r) => sum+(r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)+(r.ventas_redes||0)+(r.ventas_creditos||0), 0)
     setVentasMes(totalVentasMes)
-    const diasCon = rowsMes.filter(r => ((r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)) > 0).length
+    setGananciaCreditos(rowsMes.reduce((s,r)=>s+(r.ventas_creditos||0)-(r.costo_creditos||0),0))
+    const diasCon = rowsMes.filter(r => ((r.ventas_695||0)+(r.ventas_642||0)+(r.ventas_sanjuan||0)+(r.ventas_redes||0)+(r.ventas_creditos||0)) > 0).length
     setDiasConDatos(diasCon)
 
     const rowsHoy = ddHoy.data || []
@@ -257,7 +259,7 @@ export default function Dashboard() {
     const {data: gas} = await supabase.from('gastos').select('*').eq('fecha',fecha).order('created_at',{ascending:false})
     const data = conId
     if (data) setDatosDia(data)
-    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,notas:''})
+    else setDatosDia({efectivo:0,transferencias:0,tarjeta_pendiente:0,cheque_recibido:0,saldo_banco:0,ventas_695:0,ventas_642:0,ventas_sanjuan:0,ventas_redes:0,ventas_creditos:0,costo_creditos:0,notas:''})
     if (gas) setGastos(gas)
   }
 
@@ -281,7 +283,7 @@ export default function Dashboard() {
           .eq('usuario_id', userId)
           .single()
 
-        const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
+        const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_redes','ventas_creditos','costo_creditos','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
         const payload = {...datosSinMeta}
         camposNumericos.forEach(campo => {
           if (!payload[campo] || payload[campo] === 0) {
@@ -1100,9 +1102,13 @@ export default function Dashboard() {
               {label:'Ventas Córdoba 695 — hoy ($)', key:'ventas_695'},
               {label:'Ventas Córdoba 642 — hoy ($)', key:'ventas_642'},
               {label:'Ventas San Juan 655 — hoy ($)', key:'ventas_sanjuan'},
+              {label:'Redes sociales ($)', key:'ventas_redes', hint:'Ventas por Instagram/WhatsApp'},
+              {label:'Créditos — total cobrado ($)', key:'ventas_creditos', hint:'Total cobrado (capital + comisiones)'},
+              {label:'Créditos — costo del dinero ($)', key:'costo_creditos', hint:'Capital prestado (costo)'},
             ].map(f => (
               <div key={f.key} style={{marginBottom:'12px'}}>
                 <label style={S.label}>{f.label}</label>
+                {f.hint && <div style={{fontSize:'10px',color:C.muted,marginBottom:'4px',fontFamily:'monospace'}}>{f.hint}</div>}
                 <input type="text" inputMode="numeric" style={S.inp}
                   value={fmtInput(datosDia[f.key])}
                   placeholder="0"
@@ -1413,6 +1419,7 @@ export default function Dashboard() {
             {[
               {l:'Ventas acumuladas', v:ventasMes, c:'#3ddc84'},
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
+              {l:'Ganancia créditos (cobrado - costo)', v:gananciaCreditos, c:'#3ddc84'},
             ].map((r,i)=>(
               <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
             ))}
@@ -2153,8 +2160,11 @@ export default function Dashboard() {
                 {l:'Sucursal 695', v:datosHoy.ventas_695||0},
                 {l:'Sucursal 642', v:datosHoy.ventas_642||0},
                 {l:'San Juan', v:datosHoy.ventas_sanjuan||0},
+                {l:'Redes', v:datosHoy.ventas_redes||0},
+                {l:'Créditos (cobrado)', v:datosHoy.ventas_creditos||0},
+                {l:'Créditos (costo)', v:-(datosHoy.costo_creditos||0), color:C.red},
               ].map((r,i)=>(
-                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px'}}>{fmt(r.v)}</span></div>
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px',color:r.color||undefined}}>{fmt(Math.abs(r.v))}{r.v<0?' (costo)':''}</span></div>
               ))}
             </>}
             {modalDetalle.tipo==='mes' && <>
