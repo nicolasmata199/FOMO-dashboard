@@ -283,7 +283,7 @@ export default function Dashboard() {
           .eq('usuario_id', userId)
           .single()
 
-        const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_redes','ventas_creditos','costo_creditos','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
+        const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_redes','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
         const payload = {...datosSinMeta}
         camposNumericos.forEach(campo => {
           if (!payload[campo] || payload[campo] === 0) {
@@ -291,6 +291,8 @@ export default function Dashboard() {
             else delete payload[campo]
           }
         })
+        payload.ventas_creditos = Number(datosDia.ventas_creditos || 0)
+        payload.costo_creditos = Number(datosDia.costo_creditos || 0)
 
         let error
         if (rowExist) {
