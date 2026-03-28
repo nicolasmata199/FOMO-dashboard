@@ -284,15 +284,23 @@ export default function Dashboard() {
           .single()
 
         const camposNumericos = ['efectivo','transferencias','saldo_banco','cheque_recibido','ventas_695','ventas_642','ventas_sanjuan','ventas_redes','ventas_acumuladas_mes','tarjeta_pendiente','tarjeta_monto_real']
-        const payload = {...datosSinMeta}
+        const payload = {}
         camposNumericos.forEach(campo => {
-          if (!payload[campo] || payload[campo] === 0) {
-            if (rowExist && rowExist[campo]) payload[campo] = rowExist[campo]
-            else delete payload[campo]
+          const valorFormulario = datosDia[campo]
+          const valorExistente = rowExist?.[campo] || 0
+          if (valorFormulario !== undefined && valorFormulario !== null) {
+            if (Number(valorFormulario) !== 0) {
+              payload[campo] = Number(valorFormulario)
+            } else if (valorExistente !== 0) {
+              if (fechaCarga === hoyStr()) payload[campo] = 0
+              else payload[campo] = valorExistente
+            }
           }
         })
         payload.ventas_creditos = Number(datosDia.ventas_creditos || 0)
         payload.costo_creditos = Number(datosDia.costo_creditos || 0)
+        if (datosDia.notas !== undefined) payload.notas = datosDia.notas
+        payload.tarjeta_acreditada = datosDia.tarjeta_acreditada
 
         let error
         if (rowExist) {
