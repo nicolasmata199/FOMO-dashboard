@@ -205,10 +205,10 @@ export default function Dashboard() {
     const rowsAcum = ddAcum.data || []
     console.log('[FOMO] ddAcum rows:', rowsAcum.length, ddAcum.error?.message)
     console.log('[FOMO] ddAcum data:', JSON.stringify(rowsAcum))
-    const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo>0?r.efectivo:0), 0)
-    const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias>0?r.transferencias:0), 0)
-    const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido>0?r.cheque_recibido:0), 0)
-    const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco>0?r.saldo_banco:0), 0)
+    const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo||0), 0)
+    const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias||0), 0)
+    const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido||0), 0)
+    const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco||0), 0)
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
     const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt
     console.log('[FOMO] efectivo_acum:', efectivoAcum)
