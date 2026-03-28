@@ -210,7 +210,7 @@ export default function Dashboard() {
     const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido>0?r.cheque_recibido:0), 0)
     const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco>0?r.saldo_banco:0), 0)
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
-    const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt - totalGastosAcum
+    const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt
     console.log('[FOMO] efectivo_acum:', efectivoAcum)
     console.log('[FOMO] transf_acum:', transferAcum)
     console.log('[FOMO] cheque_acum:', chequeAcum)
@@ -983,7 +983,6 @@ export default function Dashboard() {
               {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
               {l:'Banco acumulado', v:acumData.saldoBanco, c:'#3ddc84'},
               {l:'Cheques acumulados', v:acumData.cheque, c:'#3ddc84'},
-              {l:'Gastos registrados', v:-acumData.gastos, c:C.red},
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
@@ -2061,7 +2060,6 @@ export default function Dashboard() {
                 {l:'Efectivo acumulado', v:acumData.efectivo, c:'#3ddc84'},
                 {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
                 {l:'Saldo banco', v:acumData.saldoBanco, c:'#3ddc84'},
-                {l:'Gastos', v:-acumData.gastos, c:C.red},
               ].map((r,i)=>(
                 <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span></div>
               ))}
