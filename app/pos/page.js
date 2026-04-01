@@ -4,6 +4,8 @@ import { getSupabase } from '../../lib/supabase'
 import { crearClienteAction } from './actions'
 import CierreCaja from '../../components/CierreCaja'
 
+const sb = getSupabase()
+
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const C = {
   bg:     '#030712',
@@ -211,7 +213,6 @@ export default function POSPage() {
 
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const sb = getSupabase()
     sb.from('usuarios_fomo').select('*').order('nombre').then(({ data }) => setVendedoras(data || []))
     const hoy = new Date().toISOString().split('T')[0]
     sb.from('cotizacion').select('*').eq('fecha', hoy).maybeSingle().then(({ data }) => {
@@ -222,7 +223,6 @@ export default function POSPage() {
   // ── Buscar cliente ────────────────────────────────────────────────────────
   useEffect(() => {
     if (busCliente.length < 2) { setResCliente([]); return }
-    const sb = getSupabase()
     const t = setTimeout(async () => {
       const isNum = /^\d+$/.test(busCliente)
       let q = sb.from('clientes').select('*')
@@ -236,7 +236,7 @@ export default function POSPage() {
   // ── Buscar producto ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!busProd || busProd.length < 2) { setResProd([]); return }
-    const sb = getSupabase()
+    console.log('FOMO-BUSCAR', busProd, !!sb)
     const t = setTimeout(async () => {
       const q = busProd
       const [{ data: phones }, { data: accs }] = await Promise.all([
