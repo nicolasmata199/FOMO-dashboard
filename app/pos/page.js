@@ -32,8 +32,70 @@ const FORMAS_PAGO = [
   { id: 'financiado_fomo', label: 'Financiado FOMO', icon: '⭐' },
 ]
 
-const fmt = (n) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0)
+const formatARS = (num) =>
+  '$' + Number(num || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
+// ─── Recargos y precio display ────────────────────────────────────────────────
+const TARJETAS_CON_RECARGO = ['tarjeta_visa', 'tarjeta_mastercard', 'naranja_x', 'mercadopago']
+const RECARGO_TARJETA = 8
+const RECARGO_CUOTAS  = { 2: 5, 3: 10, 4: 15, 5: 18, 6: 20, 7: 22, 8: 25, 9: 28, 10: 30 }
+
+function getPrecioDisplay(precioBase, forma, cotizacion) {
+  if (TARJETAS_CON_RECARGO.includes(forma)) {
+    return { tipo: 'tarjeta', total: Math.ceil(precioBase * (1 + RECARGO_TARJETA / 100)) }
+  }
+  if (forma.startsWith('credito_personal_')) {
+    const n = parseInt(forma.replace('credito_personal_', ''), 10)
+    if (n >= 2) {
+      const recargo = RECARGO_CUOTAS[n] ?? 20
+      const total   = Math.ceil(precioBase * (1 + recargo / 100))
+      const cuota   = Math.ceil(total / n)
+      return { tipo: 'cuotas', cuota, total, n }
+    }
+  }
+  if (forma === 'usd_billete' && cotizacion?.usd_blue) {
+    return { tipo: 'usd', usd: Math.ceil(precioBase / cotizacion.usd_blue) }
+  }
+  return { tipo: 'efectivo', precio: precioBase }
+}
+
+function PrecioDisplay({ precioBase, forma, cotizacion, size = 'sm' }) {
+  const d  = getPrecioDisplay(precioBase, forma, cotizacion)
+  const fp = FORMAS_PAGO.find(f => f.id === forma)
+  const lg = size === 'lg'
+  const big = lg ? 22 : 14
+  const sub = lg ? 12 : 10
+
+  if (d.tipo === 'cuotas') return (
+    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <div style={{ fontSize: lg ? 20 : 14, fontWeight: 700, color: C.accent, lineHeight: 1.2 }}>
+        {formatARS(d.cuota)}<span style={{ fontSize: sub, fontWeight: 400 }}>/mes</span>
+      </div>
+      <div style={{ fontSize: sub, color: C.text2, marginTop: 2 }}>
+        {d.n} cuotas · Total {formatARS(d.total)}
+      </div>
+    </div>
+  )
+  if (d.tipo === 'tarjeta') return (
+    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <div style={{ fontSize: big, fontWeight: 700, color: C.accent }}>{formatARS(d.total)}</div>
+      <div style={{ fontSize: sub, color: C.text2, marginTop: 2 }}>1 pago con {fp?.label}</div>
+    </div>
+  )
+  if (d.tipo === 'usd') return (
+    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <div style={{ fontSize: big, fontWeight: 700, color: C.accent }}>U$S {d.usd}</div>
+    </div>
+  )
+  return (
+    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <span style={{ fontSize: big, fontWeight: 700, color: C.accent }}>{formatARS(d.precio)}</span>
+    </div>
+  )
+}
 
 // ─── Micro-components ─────────────────────────────────────────────────────────
 function TextInput({ value, onChange, placeholder, type = 'text', autoFocus, align }) {
@@ -443,9 +505,11 @@ export default function POSPage() {
                   {item._tipo === 'celular' ? `IMEI: ${item.imei}` : `Stock: ${item.stock_actual}`}
                 </div>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: C.accent, flexShrink: 0 }}>
-                {fmt(item._tipo === 'celular' ? item.precio_venta_ars : item.precio_lista_ars)}
-              </span>
+              <PrecioDisplay
+                precioBase={item._tipo === 'celular' ? item.precio_venta_ars : item.precio_lista_ars}
+                forma={pagos[0]?.forma || 'efectivo_ars'}
+                cotizacion={cotizacion}
+              />
             </button>
           ))}
 
@@ -465,8 +529,12 @@ export default function POSPage() {
                         <span style={{ fontSize: 13, fontWeight: 600 }}>{item.descripcion}</span>
                       </div>
                       {item.imei && <div style={{ fontSize: 11, color: C.text2 }}>IMEI: {item.imei}</div>}
-                      <div style={{ fontSize: 13, color: C.accent, marginTop: 4, fontWeight: 700 }}>
-                        {fmt(item.precio_unitario_ars * item.cantidad)}
+                      <div style={{ marginTop: 4 }}>
+                        <PrecioDisplay
+                          precioBase={item.precio_unitario_ars * item.cantidad}
+                          forma={pagos[0]?.forma || 'efectivo_ars'}
+                          cotizacion={cotizacion}
+                        />
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -483,9 +551,14 @@ export default function POSPage() {
                 ))}
               </div>
 
-              <div style={{ background: C.bg3, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '14px 16px', marginTop: 4, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: C.text2, fontSize: 14 }}>Total</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>{fmt(totalCarrito)}</span>
+              <div style={{ background: C.bg3, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '14px 16px', marginTop: 4, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ color: C.text2, fontSize: 14, paddingTop: 3 }}>Total</span>
+                <PrecioDisplay
+                  precioBase={totalCarrito}
+                  forma={pagos[0]?.forma || 'efectivo_ars'}
+                  cotizacion={cotizacion}
+                  size="lg"
+                />
               </div>
 
               <Btn onClick={() => setPaso(3)}>Ir a Pagos →</Btn>
@@ -503,7 +576,7 @@ export default function POSPage() {
 
           <div style={{ background: C.bg3, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '14px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: C.text2, fontSize: 14 }}>Total a cobrar</span>
-            <span style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>{fmt(totalCarrito)}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>{formatARS(totalCarrito)}</span>
           </div>
 
           {pagos.map((p, idx) => (
@@ -531,7 +604,7 @@ export default function POSPage() {
               />
               {p.forma === 'usd_billete' && cotizacion?.usd_blue && (parseFloat(p.monto) || 0) > 0 && (
                 <div style={{ fontSize: 12, color: C.text2, marginTop: 5 }}>
-                  ≈ {fmt((parseFloat(p.monto) || 0) * cotizacion.usd_blue)} ARS · Blue: ${cotizacion.usd_blue}
+                  ≈ {formatARS((parseFloat(p.monto) || 0) * cotizacion.usd_blue)} ARS · Blue: ${cotizacion.usd_blue}
                 </div>
               )}
             </div>
@@ -547,18 +620,18 @@ export default function POSPage() {
           <div style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ color: C.text2, fontSize: 14 }}>Ingresado</span>
-              <span style={{ fontSize: 14 }}>{fmt(totalPagado)}</span>
+              <span style={{ fontSize: 14 }}>{formatARS(totalPagado)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
               <span style={{ color: C.text2, fontSize: 14 }}>{diferencia >= 0 ? 'Vuelto / Sobrante' : 'Falta'}</span>
               <span style={{ fontSize: 16, fontWeight: 700, color: diferencia >= 0 ? C.green : C.red }}>
-                {diferencia >= 0 ? '+' : ''}{fmt(diferencia)}
+                {diferencia >= 0 ? '+' : ''}{formatARS(diferencia)}
               </span>
             </div>
           </div>
 
           <Btn onClick={confirmarVenta} disabled={loading || totalPagado < totalCarrito || carrito.length === 0}>
-            {loading ? 'Registrando...' : `Confirmar Venta · ${fmt(totalCarrito)}`}
+            {loading ? 'Registrando...' : `Confirmar Venta · ${formatARS(totalCarrito)}`}
           </Btn>
         </div>
       )}
@@ -571,13 +644,13 @@ export default function POSPage() {
           <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: C.accent, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>¡Venta registrada!</div>
           <div style={{ color: C.text2, fontSize: 13, marginBottom: 8 }}>#{String(ventaOk.id).slice(0, 8)}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 32 }}>{fmt(totalCarrito)}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 32 }}>{formatARS(totalCarrito)}</div>
 
           <div style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 24, textAlign: 'left' }}>
             {carrito.map(item => (
               <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
                 <span>{item.descripcion}{item.cantidad > 1 ? ` ×${item.cantidad}` : ''}</span>
-                <span style={{ color: C.accent }}>{fmt(item.precio_unitario_ars * item.cantidad)}</span>
+                <span style={{ color: C.accent }}>{formatARS(item.precio_unitario_ars * item.cantidad)}</span>
               </div>
             ))}
             <div style={{ marginTop: 12 }}>
@@ -586,7 +659,7 @@ export default function POSPage() {
                 return (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.text2, marginBottom: 4 }}>
                     <span>{fp?.icon} {fp?.label}</span>
-                    <span>{p.forma === 'usd_billete' ? `USD ${p.monto}` : fmt(parseFloat(p.monto) || 0)}</span>
+                    <span>{p.forma === 'usd_billete' ? `USD ${p.monto}` : formatARS(parseFloat(p.monto) || 0)}</span>
                   </div>
                 )
               })}

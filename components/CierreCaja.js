@@ -28,8 +28,11 @@ const FORMAS_PAGO = [
   { id: 'financiado_fomo', label: 'Financiado FOMO', icon: '⭐' },
 ]
 
-const fmt = (n) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0)
+const formatARS = (num) =>
+  '$' + Number(num || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
 
 // ─── CierreCaja ───────────────────────────────────────────────────────────────
 // Props:
@@ -152,7 +155,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                       {fp?.icon} {fp?.label || forma}
                     </span>
                     <span style={{ textAlign: 'right', fontSize: 13, color: C.text2, fontFamily: "'DM Mono', monospace" }}>
-                      {fmt(esp)}
+                      {formatARS(esp)}
                     </span>
                     <input
                       type="number"
@@ -176,7 +179,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                       color: diff === 0 ? C.green : Math.abs(diff) <= 100 ? C.accent : C.red,
                       fontFamily: "'DM Mono', monospace",
                     }}>
-                      {diff > 0 ? '+' : ''}{fmt(diff)}
+                      {diff > 0 ? '+' : ''}{formatARS(diff)}
                     </div>
                   )}
                 </div>
@@ -191,7 +194,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
             }}>
               <span style={{ fontWeight: 700, color: C.text }}>Total del día</span>
               <span style={{ color: C.accent, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
-                {fmt(totalEsperado)}
+                {formatARS(totalEsperado)}
               </span>
             </div>
 
@@ -209,7 +212,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                     <div key={forma} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                       <span style={{ color: C.text2 }}>{fp?.label || forma}</span>
                       <span style={{ color: diff > 0 ? C.green : C.red, fontFamily: "'DM Mono', monospace" }}>
-                        {diff > 0 ? '+' : ''}{fmt(diff)}
+                        {diff > 0 ? '+' : ''}{formatARS(diff)}
                       </span>
                     </div>
                   )
