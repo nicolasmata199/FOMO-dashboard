@@ -559,6 +559,15 @@ export default function POSPage() {
                 />
               </div>
 
+              <div style={{ marginBottom: 12 }}>
+                <select
+                  value={pagos[0]?.forma || 'efectivo_ars'}
+                  onChange={e => setPagoField(pagos[0].id, 'forma', e.target.value)}
+                  style={{ width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: "'DM Mono', monospace", fontSize: 14, outline: 'none' }}
+                >
+                  {FORMAS_PAGO.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
+                </select>
+              </div>
               <Btn onClick={() => setPaso(3)}>Ir a Pagos →</Btn>
             </>
           )}
