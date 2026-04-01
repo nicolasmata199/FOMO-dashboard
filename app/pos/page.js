@@ -572,9 +572,20 @@ export default function POSPage() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, fontFamily: "'Syne', sans-serif" }}>Formas de Pago</div>
 
-          <div style={{ background: C.bg3, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '14px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: C.text2, fontSize: 14 }}>Total a cobrar</span>
-            <span style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>{formatARS(totalCarrito)}</span>
+          <div style={{ background: C.bg3, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: C.text2, fontSize: 14 }}>Total a cobrar</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>
+                {formatARS(pagos.length === 1 ? getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion).total : totalCarrito)}
+              </span>
+            </div>
+            {pagos.length === 1 && (() => {
+              const d = getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion)
+              if (d.tipo === 'tarjeta') return <div style={{ fontSize: 12, color: C.text2, marginTop: 4 }}>+{RECARGO_TARJETA}% recargo tarjeta · Base: {formatARS(totalCarrito)}</div>
+              if (d.tipo === 'cuotas') return <div style={{ fontSize: 12, color: C.text2, marginTop: 4 }}>{pagos[0].forma.replace('credito_personal_', '')} cuotas · +{RECARGO_CUOTAS[parseInt(pagos[0].forma.split('_').pop())]}% · Total: {formatARS(d.total)}</div>
+              if (d.tipo === 'usd') return <div style={{ fontSize: 12, color: C.text2, marginTop: 4 }}>≈ {d.usd.toFixed(2)} USD · Blue: ${cotizacion?.usd_blue}</div>
+              return null
+            })()}
           </div>
 
           {pagos.map((p, idx) => (
