@@ -261,7 +261,8 @@ export default function POSPage() {
     const m = parseFloat(p.monto) || 0
     return s + (p.forma === 'usd_billete' && cotizacion?.usd_blue ? m * cotizacion.usd_blue : m)
   }, 0)
-  const diferencia = totalPagado - totalCarrito
+  const totalConRecargo = pagos.length === 1 ? getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion).total : totalCarrito
+  const diferencia = totalPagado - totalConRecargo
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const selVendedora = (v) => { setVendedora(v); setPaso(1) }
@@ -648,8 +649,8 @@ export default function POSPage() {
             </div>
           </div>
 
-          <Btn onClick={confirmarVenta} disabled={loading || totalPagado < totalCarrito || carrito.length === 0}>
-            {loading ? 'Registrando...' : `Confirmar Venta · ${formatARS(totalCarrito)}`}
+          <Btn onClick={confirmarVenta} disabled={loading || totalPagado < totalConRecargo || carrito.length === 0}>
+            {loading ? 'Registrando...' : `Confirmar Venta · ${formatARS(totalConRecargo)}`}
           </Btn>
         </div>
       )}
