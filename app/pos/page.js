@@ -235,7 +235,7 @@ export default function POSPage() {
 
   // ── Buscar producto ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!busProd) { setResProd([]); return }
+    if (!busProd || busProd.length < 2) { setResProd([]); return }
     const sb = getSupabase()
     const t = setTimeout(async () => {
       const q = busProd
