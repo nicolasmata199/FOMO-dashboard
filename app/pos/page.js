@@ -235,23 +235,21 @@ export default function POSPage() {
 
   // ── Buscar producto ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (busProd.length < 2) { setResProd([]); return }
+    if (!busProd) { setResProd([]); return }
     const sb = getSupabase()
     const t = setTimeout(async () => {
-      const looksImei = /^\d{5,}$/.test(busProd)
+      const q = busProd
+      const [{ data: phones }, { data: accs }] = await Promise.all([
+        sb.from('existencias').select('*')
+          .or(`modelo.ilike.%${q}%,imei.ilike.%${q}%,marca.ilike.%${q}%`)
+          .eq('estado_stock', 'disponible').limit(8),
+        sb.from('accesorios').select('*')
+          .or(`nombre.ilike.%${q}%,compatibilidad.ilike.%${q}%,categoria.ilike.%${q}%`)
+          .gt('stock_actual', 0).limit(4),
+      ])
       const results = []
-      if (looksImei) {
-        const { data } = await sb.from('existencias').select('*')
-          .ilike('imei', `%${busProd}%`).eq('estado_stock', 'disponible').limit(5)
-        if (data) results.push(...data.map(d => ({ ...d, _tipo: 'celular' })))
-      } else {
-        const [{ data: phones }, { data: accs }] = await Promise.all([
-          sb.from('existencias').select('*').ilike('modelo', `%${busProd}%`).eq('estado_stock', 'disponible').limit(4),
-          sb.from('accesorios').select('*').ilike('nombre', `%${busProd}%`).gt('stock_actual', 0).limit(4),
-        ])
-        if (phones) results.push(...phones.map(d => ({ ...d, _tipo: 'celular' })))
-        if (accs)   results.push(...accs.map(d => ({ ...d, _tipo: 'accesorio' })))
-      }
+      if (phones) results.push(...phones.map(d => ({ ...d, _tipo: 'celular' })))
+      if (accs)   results.push(...accs.map(d => ({ ...d, _tipo: 'accesorio' })))
       setResProd(results)
     }, 300)
     return () => clearTimeout(t)
