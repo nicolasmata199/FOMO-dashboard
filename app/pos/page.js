@@ -414,6 +414,13 @@ export default function POSPage() {
       {paso === 0 && (
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, fontFamily: "'Syne', sans-serif" }}>¿Quién atiende hoy?</div>
+          {usuario?.rol !== 'vendedora' && (
+            <div style={{ marginBottom: 16, textAlign: 'right' }}>
+              <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                📊 Ver ventas
+              </a>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {vendedoras.map(v => (
               <button

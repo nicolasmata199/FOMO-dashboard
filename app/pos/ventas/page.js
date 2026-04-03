@@ -40,6 +40,21 @@ export default function VentasDashboard() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('hoy') // hoy | mes
+  const [usuario, setUsuario] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { window.location.href = '/pos/login'; return }
+      sb.from('usuarios_fomo').select('*').eq('id', session.user.id).single()
+        .then(({ data }) => {
+          if (!data) { window.location.href = '/pos/login'; return }
+          if (data.rol === 'vendedora') { window.location.href = '/pos'; return }
+          setUsuario(data)
+          setCheckingAuth(false)
+        })
+    })
+  }, [])
 
   useEffect(() => {
     cargarDatos()
@@ -116,6 +131,8 @@ export default function VentasDashboard() {
     background: tab === t ? C.accent : C.bg3,
     color: tab === t ? '#000' : C.text2
   })
+
+  if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh', padding:'20px 16px', color:C.text, fontFamily:"'DM Mono', monospace", maxWidth:480, margin:'0 auto' }}>
