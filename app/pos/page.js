@@ -275,8 +275,11 @@ export default function POSPage() {
   // ── Derivados ─────────────────────────────────────────────────────────────
   const totalCarrito = carrito.reduce((s, i) => s + i.precio_unitario_ars * i.cantidad, 0)
   const totalPagado = pagos.reduce((s, p) => {
-    const m = parseFloat(p.monto) || 0
-    return s + (p.forma === 'usd_billete' && cotizacion?.usd_blue ? m * cotizacion.usd_blue : m)
+    const monto = parseFloat(p.monto) || 0
+    if (monto <= 0) return s
+    const d = getPrecioDisplay(monto, p.forma, cotizacion)
+    const montoCobrado = d.total ?? monto
+    return s + (p.forma === 'usd_billete' && cotizacion?.usd_blue ? monto * cotizacion.usd_blue : montoCobrado)
   }, 0)
   const totalConRecargo = (() => {
     if (pagos.length === 1) return getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion).total
