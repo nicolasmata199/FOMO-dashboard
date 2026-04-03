@@ -282,13 +282,19 @@ export default function POSPage() {
     return s + (p.forma === 'usd_billete' && cotizacion?.usd_blue ? monto * cotizacion.usd_blue : montoCobrado)
   }, 0)
   const totalConRecargo = (() => {
-    if (pagos.length === 1) return getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion).total
-    return pagos.reduce((sum, p) => {
+    const hayMontos = pagos.some(p => (parseFloat(p.monto) || 0) > 0)
+    if (!hayMontos) return totalCarrito
+    if (pagos.length === 1) {
+      const d = getPrecioDisplay(totalCarrito, pagos[0].forma, cotizacion)
+      return d.total ?? totalCarrito
+    }
+    const sumado = pagos.reduce((sum, p) => {
       const monto = parseFloat(p.monto) || 0
       if (monto <= 0) return sum
       const d = getPrecioDisplay(monto, p.forma, cotizacion)
       return sum + (d.total ?? monto)
     }, 0)
+    return Math.max(sumado, totalCarrito)
   })()
   const diferencia = totalPagado - totalConRecargo
 
