@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server'
 
 export async function POST(req) {
   try {
-    const { vendedora_id, cliente_id, carrito, pagos, total_ars } = await req.json()
+    const { vendedora_id, vendedora_nombre, cliente_id, carrito, pagos, total_ars, total_base_ars, intereses_ars } = await req.json()
     const sb = getSupabaseAdmin()
 
     // 1. Insertar venta
     const { data: venta, error: e1 } = await sb
       .from('ventas')
-      .insert({ fecha: new Date().toISOString(), cliente_id: cliente_id || null, vendedora_id, total_ars })
+      .insert({ fecha: new Date().toISOString(), cliente_id: cliente_id || null, vendedora_id, vendedora_nombre: vendedora_nombre || null, total_ars, total_base_ars: total_base_ars || total_ars, intereses_ars: intereses_ars || 0 })
       .select()
       .single()
     if (e1) return NextResponse.json({ error: e1.message }, { status: 500 })
@@ -34,7 +34,9 @@ export async function POST(req) {
       .map(p => ({
         venta_id: venta.id,
         forma_pago: p.forma,
+        monto_base_ars: p.monto_base_ars || p.monto_ars,
         monto_ars: p.monto_ars,
+        intereses_ars: p.intereses_ars || 0,
         monto_usd: p.monto_usd || null,
       }))
     if (pagoRows.length > 0) {
