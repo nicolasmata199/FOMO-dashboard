@@ -42,6 +42,7 @@ export default function VentasDashboard() {
   const [tab, setTab] = useState('hoy') // hoy | mes
   const [usuario, setUsuario] = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [cierres, setCierres] = useState([])
 
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
@@ -64,14 +65,16 @@ export default function VentasDashboard() {
     setLoading(true)
     const mes = fecha.slice(0,7)
 
-    const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }] = await Promise.all([
+    const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy }] = await Promise.all([
       sb.from('ventas').select('*, detalle_venta(*)').eq('fecha', fecha),
       sb.from('ventas').select('*, detalle_venta(*)').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
-      sb.from('objetivos').select('*').eq('mes', mes)
+      sb.from('objetivos').select('*').eq('mes', mes),
+      sb.from('cierre_caja').select('*, usuarios_fomo(nombre, sucursal)').eq('fecha', fecha)
     ])
 
     setVentas({ hoy: ventasHoy || [], mes: ventasMes || [] })
     setObjetivos(obj || [])
+    setCierres(cierresHoy || [])
     setLoading(false)
   }
 
@@ -230,6 +233,58 @@ export default function VentasDashboard() {
             <div style={{ textAlign:'center', color:C.text2, padding:'40px 0', fontSize:13 }}>
               Sin ventas registradas
             </div>
+          )}
+
+          {/* SECCIÓN: Cierres de caja */}
+          <div style={{ fontSize:11, color:C.text2, letterSpacing:'.05em', marginBottom:10, marginTop:24 }}>CIERRES DE CAJA — HOY</div>
+          {cierres.length === 0 ? (
+            <div style={{ textAlign:'center', color:C.text2, padding:'20px 0', fontSize:13 }}>Sin cierres registrados hoy</div>
+          ) : (
+            cierres.map(c => {
+              const detEsp = c.detalle_esperado || {}
+              const detReal = c.detalle_real || {}
+              const diff = c.diferencia || 0
+              const formas = Object.keys(detEsp)
+              return (
+                <div key={c.id} style={{ background:C.bg3, border:`1px solid ${diff < 0 ? C.red : diff > 0 ? C.accent : C.border}`, borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:14 }}>{c.usuarios_fomo?.nombre || 'Sin nombre'}</div>
+                      <div style={{ fontSize:11, color:C.text2 }}>{SUCURSAL_LABEL[c.usuarios_fomo?.sucursal] || c.usuarios_fomo?.sucursal}</div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <div style={{ fontSize:13, color:C.text2 }}>Total esperado</div>
+                      <div style={{ fontSize:16, fontWeight:700, color:C.accent }}>{formatARS(c.total_esperado || 0)}</div>
+                    </div>
+                  </div>
+                  <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:8 }}>
+                    {formas.map(forma => {
+                      const esp = detEsp[forma] || 0
+                      const real = parseFloat(detReal[forma] || 0)
+                      const dif = real - esp
+                      const fp = forma.replace('_',' ').replace('ars','ARS')
+                      return (
+                        <div key={forma} style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
+                          <span style={{ color:C.text2, textTransform:'capitalize' }}>{fp}</span>
+                          <span>
+                            <span style={{ color:C.text2 }}>{formatARS(esp)}</span>
+                            {real > 0 && <span style={{ color: dif < 0 ? C.red : dif > 0 ? C.green : C.text2, marginLeft:8 }}>
+                              Real: {formatARS(real)} {dif !== 0 ? `(${dif > 0 ? '+' : ''}${formatARS(dif)})` : '✓'}
+                            </span>}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {diff !== 0 && (
+                    <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.border}`, display:'flex', justifyContent:'space-between', fontSize:13, fontWeight:700 }}>
+                      <span>Diferencia total</span>
+                      <span style={{ color: diff < 0 ? C.red : C.green }}>{diff > 0 ? '+' : ''}{formatARS(diff)}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })
           )}
         </>
       )}
