@@ -663,6 +663,25 @@ export default function POSPage() {
                   ≈ {formatARS((parseFloat(p.monto) || 0) * cotizacion.usd_blue)} ARS · Blue: ${cotizacion.usd_blue}
                 </div>
               )}
+              {(() => {
+                const monto = parseFloat(p.monto) || 0
+                if (monto <= 0) return null
+                const d = getPrecioDisplay(monto, p.forma, cotizacion)
+                if (d.tipo === 'tarjeta') return (
+                  <div style={{ fontSize: 12, color: C.accent, marginTop: 5 }}>
+                    Total con recargo: {formatARS(d.total)} (+{RECARGO_TARJETA}%)
+                  </div>
+                )
+                if (d.tipo === 'cuotas') {
+                  const n = parseInt(p.forma.split('_').pop())
+                  return (
+                    <div style={{ fontSize: 12, color: C.accent, marginTop: 5 }}>
+                      {n} cuotas de {formatARS(Math.ceil(d.total / n))} · Total: {formatARS(d.total)}
+                    </div>
+                  )
+                }
+                return null
+              })()}
             </div>
           ))}
 
