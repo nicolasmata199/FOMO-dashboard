@@ -56,7 +56,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
     setErrMsg('')
     setFetching(true)
 
-    getCierreDataAction(hoy).then(({ data, error }) => {
+    getCierreDataAction(hoy, vendedora?.id).then(({ data, error }) => {
       if (error) { setErrMsg(error); setFetching(false); return }
       setEsperado(data || {})
       // Inicializar inputs vacíos (el usuario ingresa el real)
