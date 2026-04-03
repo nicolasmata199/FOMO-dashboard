@@ -69,8 +69,8 @@ export default function VentasDashboard() {
     const mes = fecha.slice(0,7)
 
     const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy, error: cierresError }] = await Promise.all([
-      sb.from('ventas').select('*').eq('fecha', fecha),
-      sb.from('ventas').select('*').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
+      sb.from('ventas').select('*').eq('fecha', fecha).order('hora', { ascending: false }),
+      sb.from('ventas').select('*').gte('fecha', mes+'-01').lte('fecha', mes+'-31').order('fecha', { ascending: false }),
       sb.from('objetivos').select('*').eq('mes', mes),
       sb.from('cierre_caja').select('*').eq('fecha', fecha)
     ])
