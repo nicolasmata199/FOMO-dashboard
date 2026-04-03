@@ -353,16 +353,21 @@ export default function POSPage() {
         .filter(p => (parseFloat(p.monto) || 0) > 0)
         .map(p => {
           const m = parseFloat(p.monto) || 0
+          const d = getPrecioDisplay(m, p.forma, cotizacion)
+          const montoCobrado = d.total ?? (p.forma === 'usd_billete' && cotizacion?.usd_blue ? m * cotizacion.usd_blue : m)
+          const intereses = montoCobrado - m
           return {
             forma: p.forma,
-            monto_ars: p.forma === 'usd_billete' && cotizacion?.usd_blue ? m * cotizacion.usd_blue : m,
+            monto_base_ars: m,
+            monto_ars: montoCobrado,
+            intereses_ars: intereses > 0 ? intereses : 0,
             monto_usd: p.forma === 'usd_billete' ? m : null,
           }
         })
       const res = await fetch('/api/pos/venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendedora_id: vendedora.id, cliente_id: cliente?.id || null, carrito, pagos: pagosPayload, total_ars: totalCarrito }),
+        body: JSON.stringify({ vendedora_id: vendedora.id, cliente_id: cliente?.id || null, carrito, pagos: pagosPayload, total_ars: totalConRecargo, total_base_ars: totalCarrito, intereses_ars: totalConRecargo - totalCarrito, vendedora_nombre: vendedora.nombre }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al registrar')
