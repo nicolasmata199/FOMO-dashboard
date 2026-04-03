@@ -44,6 +44,8 @@ export default function VentasDashboard() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [cierres, setCierres] = useState([])
   const [usuariosCierre, setUsuariosCierre] = useState([])
+  const [detallesVenta, setDetallesVenta] = useState([])
+  const [pagosVenta, setPagosVenta] = useState([])
 
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
@@ -67,13 +69,20 @@ export default function VentasDashboard() {
     const mes = fecha.slice(0,7)
 
     const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy, error: cierresError }] = await Promise.all([
-      sb.from('ventas').select('*, detalle_venta(*)').eq('fecha', fecha),
-      sb.from('ventas').select('*, detalle_venta(*)').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
+      sb.from('ventas').select('*').eq('fecha', fecha),
+      sb.from('ventas').select('*').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
       sb.from('objetivos').select('*').eq('mes', mes),
       sb.from('cierre_caja').select('*').eq('fecha', fecha)
     ])
 
     setVentas({ hoy: ventasHoy || [], mes: ventasMes || [] })
+    const todosIds = [...(ventasHoy||[]), ...(ventasMes||[])].map(v => v.id)
+    if (todosIds.length > 0) {
+      const { data: detalles } = await sb.from('detalle_venta').select('*').in('venta_id', todosIds)
+      const { data: pagos } = await sb.from('pagos_venta').select('*').in('venta_id', todosIds)
+      setDetallesVenta(detalles || [])
+      setPagosVenta(pagos || [])
+    }
     setObjetivos(obj || [])
     console.log('FOMO-CIERRES', fecha, cierresHoy, cierresError)
     setCierres(cierresHoy || [])
@@ -98,17 +107,17 @@ export default function VentasDashboard() {
       total: 0, descuentos: 0, ventas: []
     }
     const d = porVendedora[key]
-    v.detalle_venta?.forEach(item => {
+    detallesVenta.filter(det => det.venta_id === v.id).forEach(item => {
       const precio = item.precio_unitario_ars * item.cantidad
       const original = item.precio_original_ars ? item.precio_original_ars * item.cantidad : precio
-      d.descuentos += original - precio
+      porVendedora[key].descuentos += original - precio
       if (item.tipo_producto === 'celular') {
-        d.celulares += item.cantidad
-        d.celulares_monto += precio
+        porVendedora[key].celulares += item.cantidad
+        porVendedora[key].celulares_monto += precio
       } else {
-        d.accesorios_monto += precio
+        porVendedora[key].accesorios_monto += precio
       }
-      d.total += precio
+      porVendedora[key].total += precio
     })
     d.ventas.push(v)
   })
@@ -121,7 +130,7 @@ export default function VentasDashboard() {
   ventasActivas.forEach(v => {
     const s = v.sucursal
     if (!porSucursal[s]) porSucursal[s] = { fundas: 0, templados: 0, total: 0 }
-    v.detalle_venta?.forEach(item => {
+    detallesVenta.filter(det => det.venta_id === v.id).forEach(item => {
       const desc = (item.descripcion || '').toLowerCase()
       if (desc.includes('funda')) porSucursal[s].fundas += item.cantidad
       if (desc.includes('templado')) porSucursal[s].templados += item.cantidad
