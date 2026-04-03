@@ -211,6 +211,20 @@ export default function POSPage() {
   const [err, setErr] = useState('')
   const [ventaOk, setVentaOk] = useState(null)
 
+  // Auth
+  const [usuario, setUsuario] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { window.location.href = '/pos/login'; return }
+      sb.from('usuarios_fomo').select('*').eq('id', session.user.id).single()
+        .then(({ data }) => { setUsuario(data); setCheckingAuth(false) })
+    })
+  }, [])
+
+  if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
+
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     sb.from('usuarios_fomo').select('*').order('nombre').then(({ data }) => setVendedoras(data || []))
