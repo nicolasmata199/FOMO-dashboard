@@ -284,7 +284,7 @@ export default function POSPage() {
       const monto = parseFloat(p.monto) || 0
       if (monto <= 0) return sum
       const d = getPrecioDisplay(monto, p.forma, cotizacion)
-      return sum + d.total
+      return sum + (d.total ?? monto)
     }, 0)
   })()
   const diferencia = totalPagado - totalConRecargo
