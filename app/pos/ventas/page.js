@@ -65,7 +65,7 @@ export default function VentasDashboard() {
     setLoading(true)
     const mes = fecha.slice(0,7)
 
-    const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy }] = await Promise.all([
+    const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy, error: cierresError }] = await Promise.all([
       sb.from('ventas').select('*, detalle_venta(*)').eq('fecha', fecha),
       sb.from('ventas').select('*, detalle_venta(*)').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
       sb.from('objetivos').select('*').eq('mes', mes),
@@ -74,6 +74,7 @@ export default function VentasDashboard() {
 
     setVentas({ hoy: ventasHoy || [], mes: ventasMes || [] })
     setObjetivos(obj || [])
+    console.log('FOMO-CIERRES', fecha, cierresHoy, cierresError)
     setCierres(cierresHoy || [])
     setLoading(false)
   }
