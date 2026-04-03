@@ -220,7 +220,11 @@ export default function POSPage() {
     sb.auth.getSession().then(({ data: { session } }) => {
       if (!session) { window.location.href = '/pos/login'; return }
       sb.from('usuarios_fomo').select('*').eq('id', session.user.id).single()
-        .then(({ data }) => { setUsuario(data); setCheckingAuth(false) })
+        .then(({ data }) => {
+          if (!data) { window.location.href = '/pos/login'; return }
+          setUsuario(data)
+          setCheckingAuth(false)
+        })
     })
   }, [])
 

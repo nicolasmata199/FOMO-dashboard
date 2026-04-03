@@ -14,8 +14,10 @@ export default function LoginPOS() {
   const handleLogin = async () => {
     setLoading(true)
     setError('')
-    const { error } = await sb.auth.signInWithPassword({ email, password })
+    const { data, error } = await sb.auth.signInWithPassword({ email, password })
     if (error) { setError('Email o contraseña incorrectos'); setLoading(false); return }
+    const { data: perfil } = await sb.from('usuarios_fomo').select('*').eq('id', data.user.id).single()
+    if (!perfil) { setError('Usuario sin acceso al sistema'); setLoading(false); return }
     window.location.href = '/pos'
   }
 
