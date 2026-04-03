@@ -43,6 +43,7 @@ export default function VentasDashboard() {
   const [usuario, setUsuario] = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [cierres, setCierres] = useState([])
+  const [usuariosCierre, setUsuariosCierre] = useState([])
 
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
@@ -69,13 +70,18 @@ export default function VentasDashboard() {
       sb.from('ventas').select('*, detalle_venta(*)').eq('fecha', fecha),
       sb.from('ventas').select('*, detalle_venta(*)').gte('fecha', mes+'-01').lte('fecha', mes+'-31'),
       sb.from('objetivos').select('*').eq('mes', mes),
-      sb.from('cierre_caja').select('*, usuarios_fomo(nombre, sucursal)').eq('fecha', fecha)
+      sb.from('cierre_caja').select('*').eq('fecha', fecha)
     ])
 
     setVentas({ hoy: ventasHoy || [], mes: ventasMes || [] })
     setObjetivos(obj || [])
     console.log('FOMO-CIERRES', fecha, cierresHoy, cierresError)
     setCierres(cierresHoy || [])
+    const vendedoraIds = (cierresHoy || []).map(c => c.vendedora_id).filter(Boolean)
+    if (vendedoraIds.length > 0) {
+      const { data: usrs } = await sb.from('usuarios_fomo').select('id, nombre, sucursal').in('id', vendedoraIds)
+      setUsuariosCierre(usrs || [])
+    }
     setLoading(false)
   }
 
@@ -250,8 +256,8 @@ export default function VentasDashboard() {
                 <div key={c.id} style={{ background:C.bg3, border:`1px solid ${diff < 0 ? C.red : diff > 0 ? C.accent : C.border}`, borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
                     <div>
-                      <div style={{ fontWeight:700, fontSize:14 }}>{c.usuarios_fomo?.nombre || 'Sin nombre'}</div>
-                      <div style={{ fontSize:11, color:C.text2 }}>{SUCURSAL_LABEL[c.usuarios_fomo?.sucursal] || c.usuarios_fomo?.sucursal}</div>
+                      <div style={{ fontWeight:700, fontSize:14 }}>{usuariosCierre.find(u => u.id === c.vendedora_id)?.nombre || 'Sin nombre'}</div>
+                      <div style={{ fontSize:11, color:C.text2 }}>{SUCURSAL_LABEL[usuariosCierre.find(u => u.id === c.vendedora_id)?.sucursal] || usuariosCierre.find(u => u.id === c.vendedora_id)?.sucursal}</div>
                     </div>
                     <div style={{ textAlign:'right' }}>
                       <div style={{ fontSize:13, color:C.text2 }}>Total esperado</div>
