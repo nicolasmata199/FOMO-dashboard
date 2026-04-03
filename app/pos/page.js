@@ -182,6 +182,10 @@ function SmallBtn({ children, onClick, danger }) {
 
 // ─── Main POS ─────────────────────────────────────────────────────────────────
 export default function POSPage() {
+  // Auth
+  const [usuario, setUsuario] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
   const [paso, setPaso] = useState(0)          // 0 vendedora | 1 cliente | 2 carrito | 3 pagos | 4 éxito
   const [vendedoras, setVendedoras] = useState([])
   const [vendedora, setVendedora] = useState(null)
@@ -211,10 +215,7 @@ export default function POSPage() {
   const [err, setErr] = useState('')
   const [ventaOk, setVentaOk] = useState(null)
 
-  // Auth
-  const [usuario, setUsuario] = useState(null)
-  const [checkingAuth, setCheckingAuth] = useState(true)
-
+  // ── Auth check ───────────────────────────────────────────────────────────
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
       if (!session) { window.location.href = '/pos/login'; return }
@@ -222,8 +223,6 @@ export default function POSPage() {
         .then(({ data }) => { setUsuario(data); setCheckingAuth(false) })
     })
   }, [])
-
-  if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -367,6 +366,8 @@ export default function POSPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   const pg = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'DM Mono', monospace", padding: 16, maxWidth: 480, margin: '0 auto', paddingBottom: 48 }
+
+  if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
   return (
     <div style={pg}>
