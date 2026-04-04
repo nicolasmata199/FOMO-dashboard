@@ -21,17 +21,21 @@ const C = {
 }
 
 const FORMAS_PAGO = [
-  { id: 'efectivo_ars',       label: 'Efectivo ARS',    icon: '💵' },
-  { id: 'transferencia',      label: 'Transferencia',   icon: '🏦' },
-  { id: 'mercadopago',        label: 'MercadoPago',     icon: '💙' },
-  { id: 'usd_billete',        label: 'USD Billete',     icon: '💲' },
-  { id: 'tarjeta_visa',       label: 'Visa',            icon: '💳' },
-  { id: 'tarjeta_mastercard', label: 'Mastercard',      icon: '💳' },
-  { id: 'naranja_x',          label: 'Naranja X',       icon: '🟠' },
-  ...Array.from({ length: 10 }, (_, i) => ({
-    id: `credito_personal_${i + 1}`, label: `Crédito ${i + 1}`, icon: '📋',
-  })),
-  { id: 'financiado_fomo', label: 'Financiado FOMO', icon: '⭐' },
+  { id: 'efectivo_ars',        label: 'Efectivo ARS',       icon: '💵', recargo: 0,   editable: false },
+  { id: 'transferencia',       label: 'Transferencia',      icon: '🏦', recargo: 0,   editable: false },
+  { id: 'usd_billete',         label: 'USD Billete',        icon: '💲', recargo: 0,   editable: false },
+  { id: 'posnet_debito',       label: 'Posnet Débito',      icon: '💳', recargo: 5,   editable: false },
+  { id: 'posnet_credito_1',    label: 'Tarjeta 1 cuota',   icon: '💳', recargo: 10,  editable: false },
+  { id: 'posnet_credito_3',    label: 'Tarjeta 3 cuotas',  icon: '💳', recargo: 42,  editable: false },
+  { id: 'posnet_credito_6',    label: 'Tarjeta 6 cuotas',  icon: '💳', recargo: 76,  editable: false },
+  { id: 'posnet_credito_9',    label: 'Tarjeta 9 cuotas',  icon: '💳', recargo: 96,  editable: false },
+  { id: 'posnet_credito_12',   label: 'Tarjeta 12 cuotas', icon: '💳', recargo: 127, editable: false },
+  { id: 'go_cuotas',           label: 'Go Cuotas',          icon: '📋', recargo: 36,  editable: false },
+  { id: 'directo',             label: 'DIRECTO',            icon: '📋', recargo: 57,  editable: false },
+  { id: 'rapicompra',          label: 'RapiCOMPRA',         icon: '📋', recargo: 15,  editable: true  },
+  { id: 'credito_argentino',   label: 'Crédito Argentino',  icon: '📋', recargo: 15,  editable: true  },
+  { id: 'rapicuotas',          label: 'Rapicuotas',         icon: '📋', recargo: 15,  editable: true  },
+  { id: 'plan_canje',          label: 'Plan Canje',         icon: '🔄', recargo: 0,   editable: false },
 ]
 
 const formatARS = (num) =>
@@ -41,25 +45,25 @@ const formatARS = (num) =>
   })
 
 // ─── Recargos y precio display ────────────────────────────────────────────────
-const TARJETAS_CON_RECARGO = ['tarjeta_visa', 'tarjeta_mastercard', 'naranja_x', 'mercadopago']
-const RECARGO_TARJETA = 8
-const RECARGO_CUOTAS  = { 2: 5, 3: 10, 4: 15, 5: 18, 6: 20, 7: 22, 8: 25, 9: 28, 10: 30 }
-
 function getPrecioDisplay(precioBase, forma, cotizacion) {
-  if (TARJETAS_CON_RECARGO.includes(forma)) {
-    return { tipo: 'tarjeta', total: Math.ceil(precioBase * (1 + RECARGO_TARJETA / 100)) }
-  }
-  if (forma.startsWith('credito_personal_')) {
-    const n = parseInt(forma.replace('credito_personal_', ''), 10)
-    if (n >= 2) {
-      const recargo = RECARGO_CUOTAS[n] ?? 20
-      const total   = Math.ceil(precioBase * (1 + recargo / 100))
-      const cuota   = Math.ceil(total / n)
-      return { tipo: 'cuotas', cuota, total, n }
-    }
+  const fp = FORMAS_PAGO.find(f => f.id === forma)
+  const recargo = fp?.recargo || 0
+  if (forma.startsWith('posnet_credito_')) {
+    const n = parseInt(forma.replace('posnet_credito_', ''), 10)
+    const total = Math.ceil(precioBase * (1 + recargo / 100))
+    if (n === 1) return { tipo: 'tarjeta', total, label: '1 pago con tarjeta' }
+    const cuota = Math.ceil(total / n)
+    return { tipo: 'cuotas', cuota, total, n }
   }
   if (forma === 'usd_billete' && cotizacion?.usd_blue) {
     return { tipo: 'usd', usd: Math.ceil(precioBase / cotizacion.usd_blue) }
+  }
+  if (forma === 'plan_canje') {
+    return { tipo: 'canje', precio: precioBase }
+  }
+  if (recargo > 0) {
+    const total = Math.ceil(precioBase * (1 + recargo / 100))
+    return { tipo: 'tarjeta', total, label: fp?.label }
   }
   return { tipo: 'efectivo', precio: precioBase }
 }
