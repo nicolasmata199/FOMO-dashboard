@@ -38,6 +38,9 @@ export async function POST(req) {
         monto_ars: p.monto_ars,
         intereses_ars: p.intereses_ars || 0,
         monto_usd: p.monto_usd || null,
+        canje_modelo: p.canje_modelo || null,
+        canje_imei: p.canje_imei || null,
+        canje_valor: p.canje_valor || null,
       }))
     if (pagoRows.length > 0) {
       const { error: e3 } = await sb.from('pagos_venta').insert(pagoRows)
@@ -56,6 +59,20 @@ export async function POST(req) {
             .update({ stock_actual: Math.max(0, (acc.stock_actual || 0) - item.cantidad) })
             .eq('id', item.accesorio_id)
         }
+      }
+    }
+
+    // 5. Procesar plan canje — ingresa celular al stock como usado
+    for (const pago of pagoRows) {
+      if (pago.forma_pago === 'plan_canje' && pago.canje_imei) {
+        await sb.from('existencias').insert({
+          imei: pago.canje_imei,
+          descripcion: pago.canje_modelo || 'Celular en canje',
+          estado_stock: 'disponible',
+          condicion: 'usado',
+          precio_venta: pago.canje_valor ? parseFloat(pago.canje_valor) : null,
+          sucursal: (await sb.from('usuarios_fomo').select('sucursal').eq('id', vendedora_id).single()).data?.sucursal || null,
+        })
       }
     }
 
