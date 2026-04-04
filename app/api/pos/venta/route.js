@@ -42,6 +42,7 @@ export async function POST(req) {
         canje_imei: p.canje_imei || null,
         canje_valor: p.canje_valor || null,
       }))
+    console.log('CANJE DEBUG pagoRows:', JSON.stringify(pagoRows))
     if (pagoRows.length > 0) {
       const { error: e3 } = await sb.from('pagos_venta').insert(pagoRows)
       if (e3) return NextResponse.json({ error: e3.message }, { status: 500 })
