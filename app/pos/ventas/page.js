@@ -67,10 +67,13 @@ export default function VentasDashboard() {
   async function cargarDatos() {
     setLoading(true)
     const mes = fecha.slice(0,7)
+    const [anio, mesNum] = mes.split('-').map(Number)
+    const ultimoDia = new Date(anio, mesNum, 0).getDate()
+    const fechaFin = `${mes}-${String(ultimoDia).padStart(2,'0')}`
 
     const [{ data: ventasHoy }, { data: ventasMes }, { data: obj }, { data: cierresHoy, error: cierresError }] = await Promise.all([
       sb.from('ventas').select('*').eq('fecha', fecha).order('hora', { ascending: false }),
-      sb.from('ventas').select('*').gte('fecha', mes+'-01').lte('fecha', mes+'-31').order('fecha', { ascending: false }),
+      sb.from('ventas').select('*').gte('fecha', mes+'-01').lte('fecha', fechaFin).order('fecha', { ascending: false }),
       sb.from('objetivos').select('*').eq('mes', mes),
       sb.from('cierre_caja').select('*').eq('fecha', fecha)
     ])
