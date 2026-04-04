@@ -372,6 +372,9 @@ export default function POSPage() {
             monto_ars: montoCobrado,
             intereses_ars: intereses > 0 ? intereses : 0,
             monto_usd: p.forma === 'usd_billete' ? m : null,
+            canje_modelo: p.canje_modelo || null,
+            canje_imei: p.canje_imei || null,
+            canje_valor: p.canje_valor || null,
           }
         })
       const res = await fetch('/api/pos/venta', {
