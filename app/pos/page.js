@@ -620,6 +620,29 @@ export default function POSPage() {
                 >
                   {FORMAS_PAGO.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
                 </select>
+                {pagos[0]?.forma === 'plan_canje' && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input
+                      placeholder="Modelo (ej: iPhone 13 128GB)"
+                      style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                      value={pagos[0]?.canje_modelo || ''}
+                      onChange={e => setPagos(prev => prev.map(x => x.id === pagos[0].id ? { ...x, canje_modelo: e.target.value } : x))}
+                    />
+                    <input
+                      placeholder="IMEI del celular en canje"
+                      style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                      value={pagos[0]?.canje_imei || ''}
+                      onChange={e => setPagos(prev => prev.map(x => x.id === pagos[0].id ? { ...x, canje_imei: e.target.value } : x))}
+                    />
+                    <input
+                      placeholder="Valor del canje en ARS"
+                      type="number"
+                      style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                      value={pagos[0]?.canje_valor || ''}
+                      onChange={e => setPagos(prev => prev.map(x => x.id === pagos[0].id ? { ...x, canje_valor: e.target.value, monto: e.target.value } : x))}
+                    />
+                  </div>
+                )}
               </div>
               <Btn onClick={() => setPaso(3)}>Ir a Pagos →</Btn>
             </>
@@ -668,6 +691,29 @@ export default function POSPage() {
               >
                 {FORMAS_PAGO.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
               </select>
+              {p.forma === 'plan_canje' && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    placeholder="Modelo (ej: iPhone 13 128GB)"
+                    style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                    value={p.canje_modelo || ''}
+                    onChange={e => setPagos(prev => prev.map(x => x.id === p.id ? { ...x, canje_modelo: e.target.value } : x))}
+                  />
+                  <input
+                    placeholder="IMEI del celular en canje"
+                    style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                    value={p.canje_imei || ''}
+                    onChange={e => setPagos(prev => prev.map(x => x.id === p.id ? { ...x, canje_imei: e.target.value } : x))}
+                  />
+                  <input
+                    placeholder="Valor del canje en ARS"
+                    type="number"
+                    style={{ background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' }}
+                    value={p.canje_valor || ''}
+                    onChange={e => setPagos(prev => prev.map(x => x.id === p.id ? { ...x, canje_valor: e.target.value, monto: e.target.value } : x))}
+                  />
+                </div>
+              )}
               <input
                 type="text"
                 inputMode="numeric"
