@@ -193,6 +193,7 @@ export default function POSPage() {
   const [paso, setPaso] = useState(0)          // 0 vendedora | 1 cliente | 2 carrito | 3 pagos | 4 éxito
   const [vendedoras, setVendedoras] = useState([])
   const [vendedora, setVendedora] = useState(null)
+  const [vendedoraTemp, setVendedoraTemp] = useState(null) // seleccionada, pendiente de elegir sucursal
   const [cliente, setCliente] = useState(null)
   const [carrito, setCarrito] = useState([])
   const [cotizacion, setCotizacion] = useState(null)
@@ -307,7 +308,8 @@ export default function POSPage() {
   const diferencia = totalPagado - totalConRecargo
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const selVendedora = (v) => { setVendedora(v); setPaso(1) }
+  const selVendedora = (v) => { setVendedoraTemp(v) }
+  const confirmarSucursal = (suc) => { setVendedora({ ...vendedoraTemp, sucursal: suc }); setVendedoraTemp(null); setPaso(1) }
 
   const selCliente = (c) => {
     setCliente(c); setBusCliente(''); setResCliente([]); setModoCrear(false); setPaso(2)
@@ -446,37 +448,71 @@ export default function POSPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       {paso === 0 && (
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, fontFamily: "'Syne', sans-serif" }}>¿Quién atiende hoy?</div>
-          {usuario?.rol !== 'vendedora' && (
-            <div style={{ marginBottom: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
-                📊 Ver ventas
-              </a>
-              <a href="/stock" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
-                📦 Stock
-              </a>
+          {!vendedoraTemp ? (
+            <>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, fontFamily: "'Syne', sans-serif" }}>¿Quién atiende hoy?</div>
+              {usuario?.rol !== 'vendedora' && (
+                <div style={{ marginBottom: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                    📊 Ver ventas
+                  </a>
+                  <a href="/stock" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                    📦 Stock
+                  </a>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {vendedoras.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => selVendedora(v)}
+                    style={{
+                      background: C.bg3, border: `1px solid ${C.border}`,
+                      borderRadius: 12, padding: '22px 12px',
+                      color: C.text, cursor: 'pointer', textAlign: 'center',
+                      fontFamily: "'DM Mono', monospace",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+                  >
+                    <div style={{ fontSize: 30, marginBottom: 8 }}>👤</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{v.nombre}</div>
+                    <div style={{ fontSize: 11, color: C.text2, marginTop: 4 }}>{v.sucursal || v.rol}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, fontFamily: "'Syne', sans-serif" }}>
+                Hola, {vendedoraTemp.nombre.split(' ')[0]} 👋
+              </div>
+              <div style={{ fontSize: 14, color: C.text2, marginBottom: 24 }}>¿En qué sucursal estás hoy?</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['695', '642', 'sanjuan', 'redes'].map(suc => (
+                  <button
+                    key={suc}
+                    onClick={() => confirmarSucursal(suc)}
+                    style={{
+                      background: vendedoraTemp.sucursal === suc ? C.accent : C.bg3,
+                      color: vendedoraTemp.sucursal === suc ? '#000' : C.text,
+                      border: `1px solid ${vendedoraTemp.sucursal === suc ? C.accent : C.border}`,
+                      borderRadius: 12, padding: '18px 20px',
+                      cursor: 'pointer', textAlign: 'left',
+                      fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>Sucursal {suc.toUpperCase()}</span>
+                    {vendedoraTemp.sucursal === suc && <span style={{ fontSize: 12, fontWeight: 400 }}>mi local habitual</span>}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setVendedoraTemp(null)} style={{ marginTop: 16, background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
+                ← Volver
+              </button>
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {vendedoras.map(v => (
-              <button
-                key={v.id}
-                onClick={() => selVendedora(v)}
-                style={{
-                  background: C.bg3, border: `1px solid ${C.border}`,
-                  borderRadius: 12, padding: '22px 12px',
-                  color: C.text, cursor: 'pointer', textAlign: 'center',
-                  fontFamily: "'DM Mono', monospace",
-                }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
-                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
-              >
-                <div style={{ fontSize: 30, marginBottom: 8 }}>👤</div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{v.nombre}</div>
-                <div style={{ fontSize: 11, color: C.text2, marginTop: 4 }}>{v.rol || v.sucursal}</div>
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
