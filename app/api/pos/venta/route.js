@@ -1,15 +1,50 @@
-import { getSupabaseAdmin } from '../../../../lib/supabase'
+import { getSupabaseAdmin, getSupabase } from '../../../../lib/supabase'
 import { NextResponse } from 'next/server'
 
 export async function POST(req) {
   try {
-    const { vendedora_id, vendedora_nombre, cliente_id, carrito, pagos, total_ars, total_base_ars, intereses_ars } = await req.json()
+    // 0. Verificar autenticación
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+    const sbAnon = getSupabase()
+    const { data: { user }, error: authError } = await sbAnon.auth.getUser(token)
+    if (authError || !user) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
+
     const sb = getSupabaseAdmin()
+
+    // Verificar que el usuario existe en usuarios_fomo
+    const { data: usuarioFomo } = await sb.from('usuarios_fomo').select('id,rol').eq('id', user.id).single()
+    if (!usuarioFomo) return NextResponse.json({ error: 'Usuario sin acceso' }, { status: 403 })
+
+    // 0b. Validar payload
+    const body = await req.json()
+    const { vendedora_id, vendedora_nombre, cliente_id, carrito, pagos, total_ars, total_base_ars, intereses_ars } = body
+
+    if (!vendedora_id) return NextResponse.json({ error: 'Falta vendedora_id' }, { status: 400 })
+    if (!Array.isArray(carrito) || carrito.length === 0) return NextResponse.json({ error: 'Carrito vacío' }, { status: 400 })
+    if (!total_ars || total_ars <= 0) return NextResponse.json({ error: 'Total inválido' }, { status: 400 })
+    if (carrito.some(i => !i._tipo || !i.descripcion || !(i.cantidad > 0) || !(i.precio_unitario_ars >= 0))) {
+      return NextResponse.json({ error: 'Ítem del carrito inválido' }, { status: 400 })
+    }
+
+    // Verificar que vendedora_id existe
+    const { data: vendedoraOk } = await sb.from('usuarios_fomo').select('id').eq('id', vendedora_id).single()
+    if (!vendedoraOk) return NextResponse.json({ error: 'Vendedora no encontrada' }, { status: 400 })
 
     // 1. Insertar venta
     const { data: venta, error: e1 } = await sb
       .from('ventas')
-      .insert({ fecha: new Date().toISOString(), cliente_id: cliente_id || null, vendedora_id, vendedora_nombre: vendedora_nombre || null, total_ars, total_base_ars: total_base_ars || total_ars, intereses_ars: intereses_ars || 0 })
+      .insert({
+        fecha: new Date().toISOString(),
+        cliente_id: cliente_id || null,
+        vendedora_id,
+        vendedora_nombre: vendedora_nombre || null,
+        total_ars,
+        total_base_ars: total_base_ars || total_ars,
+        intereses_ars: intereses_ars || 0,
+      })
       .select()
       .single()
     if (e1) return NextResponse.json({ error: e1.message }, { status: 500 })
@@ -23,13 +58,13 @@ export async function POST(req) {
       descripcion: item.descripcion,
       cantidad: item.cantidad,
       precio_unitario_ars: item.precio_unitario_ars,
-      costo_unitario_ars: item.costo_unitario_ars,
+      costo_unitario_ars: item.costo_unitario_ars || null,
     }))
     const { error: e2 } = await sb.from('detalle_venta').insert(detalles)
     if (e2) return NextResponse.json({ error: e2.message }, { status: 500 })
 
     // 3. Insertar pagos_venta
-    const pagoRows = pagos
+    const pagoRows = (pagos || [])
       .filter(p => (p.monto_ars || 0) > 0)
       .map(p => ({
         venta_id: venta.id,
@@ -42,7 +77,6 @@ export async function POST(req) {
         canje_imei: p.canje_imei || null,
         canje_valor: p.canje_valor || null,
       }))
-    console.log('CANJE DEBUG pagoRows:', JSON.stringify(pagoRows))
     if (pagoRows.length > 0) {
       const { error: e3 } = await sb.from('pagos_venta').insert(pagoRows)
       if (e3) return NextResponse.json({ error: e3.message }, { status: 500 })
@@ -53,8 +87,7 @@ export async function POST(req) {
       if (item._tipo === 'celular' && item.imei) {
         await sb.from('existencias').update({ estado_stock: 'vendido' }).eq('imei', item.imei)
       } else if (item._tipo === 'accesorio' && item.accesorio_id) {
-        const { data: acc } = await sb
-          .from('accesorios').select('stock_actual').eq('id', item.accesorio_id).single()
+        const { data: acc } = await sb.from('accesorios').select('stock_actual').eq('id', item.accesorio_id).single()
         if (acc) {
           await sb.from('accesorios')
             .update({ stock_actual: Math.max(0, (acc.stock_actual || 0) - item.cantidad) })
@@ -63,16 +96,18 @@ export async function POST(req) {
       }
     }
 
-    // 5. Procesar plan canje — ingresa celular al stock como usado
+    // 5. Procesar plan canje — ingresa celular al stock como usado_premium
+    const sucursalVendedora = (await sb.from('usuarios_fomo').select('sucursal').eq('id', vendedora_id).single()).data?.sucursal || null
     for (const pago of pagoRows) {
       if (pago.forma_pago === 'plan_canje' && pago.canje_imei) {
         await sb.from('existencias').insert({
           imei: pago.canje_imei,
-          descripcion: pago.canje_modelo || 'Celular en canje',
+          modelo: pago.canje_modelo || 'Celular en canje',
+          estado_equipo: 'usado_premium',
           estado_stock: 'disponible',
-          condicion: 'usado',
-          precio_venta: pago.canje_valor ? parseFloat(pago.canje_valor) : null,
-          sucursal: (await sb.from('usuarios_fomo').select('sucursal').eq('id', vendedora_id).single()).data?.sucursal || null,
+          precio_venta_ars: pago.canje_valor ? parseFloat(pago.canje_valor) : null,
+          sucursal: sucursalVendedora,
+          fecha_ingreso: new Date().toISOString().split('T')[0],
         })
       }
     }

@@ -383,9 +383,10 @@ export default function POSPage() {
             canje_valor: p.canje_valor || null,
           }
         })
+      const { data: { session } } = await sb.auth.getSession()
       const res = await fetch('/api/pos/venta', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ vendedora_id: vendedora.id, cliente_id: cliente?.id || null, carrito, pagos: pagosPayload, total_ars: totalConRecargo, total_base_ars: totalCarrito, intereses_ars: totalConRecargo - totalCarrito, vendedora_nombre: vendedora.nombre }),
       })
       const json = await res.json()
