@@ -365,6 +365,17 @@ export default function POSPage() {
   const confirmarVenta = async () => {
     setErr(''); setLoading(true)
     try {
+      // Validar stock suficiente para accesorios
+      for (const item of carrito) {
+        if (item._tipo === 'accesorio' && item.accesorio_id) {
+          const { data: acc } = await sb.from('accesorios').select('stock_actual,nombre').eq('id', item.accesorio_id).single()
+          if (acc && (acc.stock_actual || 0) < item.cantidad) {
+            setErr(`Stock insuficiente: "${acc.nombre}" — hay ${acc.stock_actual} unidad(es), pediste ${item.cantidad}.`)
+            setLoading(false)
+            return
+          }
+        }
+      }
       const pagosPayload = pagos
         .filter(p => (parseFloat(p.monto) || 0) > 0)
         .map(p => {
@@ -399,6 +410,11 @@ export default function POSPage() {
   const nuevaVenta = () => {
     setCliente(null); setCarrito([]); setPagos([{ id: 1, forma: 'efectivo_ars', monto: '' }])
     setSeq(2); setBusCliente(''); setVentaOk(null); setErr(''); setPaso(1)
+  }
+  const cambiarVendedora = () => {
+    setVendedora(null); setVendedoraTemp(null); setCliente(null); setCarrito([])
+    setPagos([{ id: 1, forma: 'efectivo_ars', monto: '' }])
+    setSeq(2); setBusCliente(''); setVentaOk(null); setErr(''); setPaso(0)
   }
 
   // ── Cierre de caja ────────────────────────────────────────────────────────
@@ -853,6 +869,9 @@ export default function POSPage() {
           </div>
 
           <Btn onClick={nuevaVenta}>+ Nueva venta</Btn>
+          <button onClick={cambiarVendedora} style={{ marginTop: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 20px', color: C.text2, fontSize: 13, cursor: 'pointer', width: '100%', fontFamily: "'DM Mono', monospace" }}>
+            Cambiar vendedora
+          </button>
         </div>
       )}
 

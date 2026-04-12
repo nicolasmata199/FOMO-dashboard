@@ -19,7 +19,7 @@ const C = {
   blue:   '#58a6ff',
 }
 
-const SUCURSALES = ['695', '642', 'sanjuan']
+const SUCURSALES = ['695', '642', 'sanjuan', 'redes']
 
 const fmt = (n) =>
   '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
