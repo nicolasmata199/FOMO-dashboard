@@ -599,7 +599,6 @@ export default function StockPage() {
                 <Field label="CONDICIÓN">
                   <select value={ingCondicion} onChange={e => setIngCondicion(e.target.value)} style={inp}>
                     <option value="nuevo">Nuevo</option>
-                    <option value="usado">Usado</option>
                     <option value="usado_premium">Usado Premium</option>
                   </select>
                 </Field>

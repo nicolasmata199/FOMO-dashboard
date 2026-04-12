@@ -257,16 +257,20 @@ export default function POSPage() {
   // ── Buscar producto ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!busProd || busProd.length < 2) { setResProd([]); return }
-    console.log('FOMO-BUSCAR', busProd, !!sb)
     const t = setTimeout(async () => {
       const q = busProd
+      const suc = vendedora?.sucursal
+      let qCels = sb.from('existencias').select('*')
+        .or(`modelo.ilike.%${q}%,imei.ilike.%${q}%,marca.ilike.%${q}%`)
+        .eq('estado_stock', 'disponible')
+      if (suc) qCels = qCels.eq('sucursal', suc)
+      let qAccs = sb.from('accesorios').select('*')
+        .or(`nombre.ilike.%${q}%,compatibilidad.ilike.%${q}%,categoria.ilike.%${q}%`)
+        .gt('stock_actual', 0)
+      if (suc) qAccs = qAccs.eq('sucursal', suc)
       const [{ data: phones }, { data: accs }] = await Promise.all([
-        sb.from('existencias').select('*')
-          .or(`modelo.ilike.%${q}%,imei.ilike.%${q}%,marca.ilike.%${q}%`)
-          .eq('estado_stock', 'disponible').limit(8),
-        sb.from('accesorios').select('*')
-          .or(`nombre.ilike.%${q}%,compatibilidad.ilike.%${q}%,categoria.ilike.%${q}%`)
-          .gt('stock_actual', 0).limit(4),
+        qCels.limit(8),
+        qAccs.limit(4),
       ])
       const results = []
       if (phones) results.push(...phones.map(d => ({ ...d, _tipo: 'celular' })))
@@ -274,7 +278,7 @@ export default function POSPage() {
       setResProd(results)
     }, 300)
     return () => clearTimeout(t)
-  }, [busProd])
+  }, [busProd, vendedora])
 
   // ── Derivados ─────────────────────────────────────────────────────────────
   const totalCarrito = carrito.reduce((s, i) => s + i.precio_unitario_ars * i.cantidad, 0)
@@ -444,9 +448,12 @@ export default function POSPage() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, fontFamily: "'Syne', sans-serif" }}>¿Quién atiende hoy?</div>
           {usuario?.rol !== 'vendedora' && (
-            <div style={{ marginBottom: 16, textAlign: 'right' }}>
+            <div style={{ marginBottom: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
                 📊 Ver ventas
+              </a>
+              <a href="/stock" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                📦 Stock
               </a>
             </div>
           )}
