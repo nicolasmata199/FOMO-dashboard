@@ -54,15 +54,16 @@ export default function StockPage() {
   const [ingPrecio, setIngPrecio]       = useState('')
   const [ingBateria, setIngBateria]     = useState('')
   const [ingSuc, setIngSuc]             = useState('695')
-  // accesorio multi-sucursal
-  const [accNombre, setAccNombre]       = useState('')
-  const [accCategoria, setAccCategoria] = useState('')
-  const [accCosto, setAccCosto]         = useState('')
-  const [accPrecio, setAccPrecio]       = useState('')
-  const [accMinimo, setAccMinimo]       = useState('')
-  const [accQty, setAccQty]             = useState({ '695': '', '642': '', 'sanjuan': '' })
+  // accesorio — tabla bulk
+  const newRow = () => ({ _id: Math.random(), nombre: '', categoria: '', costo: '', precio: '', minimo: '', q695: '', q642: '', qsj: '' })
+  const [rows, setRows]                 = useState(() => Array.from({ length: 5 }, newRow))
   const [savingIng, setSavingIng]       = useState(false)
   const [ingMsg, setIngMsg]             = useState(null)
+  const [pasteHint, setPasteHint]       = useState(false)
+  // catálogo para autocompletado
+  const [catalogo, setCatalogo]         = useState([]) // [{nombre, categoria, costo_ars, precio_lista_ars, stock_minimo}]
+  const [suggestions, setSuggestions]   = useState({}) // _id → [matches]
+  const [openSug, setOpenSug]           = useState(null) // _id con dropdown abierto
 
   // ── Ajustes ──────────────────────────────────────────────────────────────
   const [ajSucursal, setAjSucursal]     = useState('695')
@@ -100,6 +101,20 @@ export default function StockPage() {
   useEffect(() => {
     if (!checkingAuth) cargarStock(sucursal)
   }, [sucursal, checkingAuth])
+
+  // cargar catálogo de accesorios para autocompletado
+  useEffect(() => {
+    if (tab === 'ingreso' && tipoIngreso === 'accesorio' && catalogo.length === 0) {
+      sb.from('accesorios').select('nombre,categoria,costo_ars,precio_lista_ars,stock_minimo').eq('activo', true).order('nombre')
+        .then(({ data }) => {
+          if (!data) return
+          // deduplicar por nombre (quedarse con el primero)
+          const seen = new Set()
+          const unique = data.filter(a => { if (seen.has(a.nombre)) return false; seen.add(a.nombre); return true })
+          setCatalogo(unique)
+        })
+    }
+  }, [tab, tipoIngreso])
 
   // ── Cargar stock ──────────────────────────────────────────────────────────
   async function cargarStock(suc) {
@@ -179,61 +194,117 @@ export default function StockPage() {
     if (ingSuc === sucursal) cargarStock(sucursal)
   }
 
-  // ── Guardar ingreso accesorio (multi-sucursal) ────────────────────────────
-  async function guardarAccesorio() {
-    if (!accNombre) return
-    const entradas = SUCURSALES.filter(s => parseInt(accQty[s] || '0') > 0)
-    if (entradas.length === 0) return
+  // ── Paste desde Excel ─────────────────────────────────────────────────────
+  function handlePaste(e) {
+    const text = e.clipboardData.getData('text')
+    if (!text.includes('\t')) return
+    e.preventDefault()
+    const lines = text.trim().split('\n').filter(l => l.trim())
+    const parsed = lines.map(line => {
+      const c = line.split('\t')
+      return {
+        _id: Math.random(),
+        nombre:    c[0]?.trim() || '',
+        categoria: c[1]?.trim() || '',
+        costo:     c[2]?.trim().replace(/[$.]/g, '').replace(',', '.') || '',
+        precio:    c[3]?.trim().replace(/[$.]/g, '').replace(',', '.') || '',
+        minimo:    c[4]?.trim() || '',
+        q695:      c[5]?.trim() || '',
+        q642:      c[6]?.trim() || '',
+        qsj:       c[7]?.trim() || '',
+      }
+    })
+    // rellenar hasta mínimo 3 filas vacías al final
+    const extras = Array.from({ length: 3 }, newRow)
+    setRows([...parsed, ...extras])
+    setPasteHint(false)
+  }
+
+  function updateRow(id, field, val) {
+    setRows(prev => prev.map(r => r._id === id ? { ...r, [field]: val } : r))
+    // si es el campo nombre, filtrar sugerencias
+    if (field === 'nombre') {
+      if (val.trim().length < 2) { setSuggestions(p => ({ ...p, [id]: [] })); setOpenSug(null); return }
+      const q = val.toLowerCase()
+      const matches = catalogo.filter(a => a.nombre.toLowerCase().includes(q)).slice(0, 6)
+      setSuggestions(p => ({ ...p, [id]: matches }))
+      setOpenSug(matches.length > 0 ? id : null)
+    }
+  }
+
+  function selectSuggestion(rowId, item) {
+    setRows(prev => prev.map(r => r._id === rowId ? {
+      ...r,
+      nombre:   item.nombre,
+      categoria: item.categoria || r.categoria,
+      costo:    item.costo_ars ? String(item.costo_ars) : r.costo,
+      precio:   item.precio_lista_ars ? String(item.precio_lista_ars) : r.precio,
+      minimo:   item.stock_minimo != null ? String(item.stock_minimo) : r.minimo,
+    } : r))
+    setSuggestions(p => ({ ...p, [rowId]: [] }))
+    setOpenSug(null)
+  }
+
+  function addRows(n = 5) {
+    setRows(prev => [...prev, ...Array.from({ length: n }, newRow)])
+  }
+
+  function removeRow(id) {
+    setRows(prev => prev.filter(r => r._id !== id))
+  }
+
+  // ── Guardar ingreso accesorios bulk ───────────────────────────────────────
+  async function guardarAccesorios() {
+    const validas = rows.filter(r => r.nombre.trim() && (parseInt(r.q695)||0) + (parseInt(r.q642)||0) + (parseInt(r.qsj)||0) > 0)
+    if (validas.length === 0) return
     setSavingIng(true); setIngMsg(null)
 
-    let errores = []
-    for (const suc of entradas) {
-      const qty = parseInt(accQty[suc])
-      const { data: existente } = await sb.from('accesorios')
-        .select('*').eq('nombre', accNombre.trim()).eq('sucursal', suc).eq('activo', true).maybeSingle()
+    let ok = 0, errores = 0
+    for (const row of validas) {
+      const byQty = { '695': parseInt(row.q695)||0, '642': parseInt(row.q642)||0, 'sanjuan': parseInt(row.qsj)||0 }
+      for (const [suc, qty] of Object.entries(byQty)) {
+        if (qty <= 0) continue
+        const { data: existente } = await sb.from('accesorios')
+          .select('*').eq('nombre', row.nombre.trim()).eq('sucursal', suc).eq('activo', true).maybeSingle()
 
-      let error, antes = 0, despues = qty
-      if (existente) {
-        antes = existente.stock_actual || 0
-        despues = antes + qty
-        const { error: e } = await sb.from('accesorios')
-          .update({ stock_actual: despues })
-          .eq('id', existente.id)
-        error = e
-      } else {
-        const { error: e } = await sb.from('accesorios').insert({
-          nombre: accNombre.trim(),
-          categoria: accCategoria.trim() || null,
-          stock_actual: qty,
-          stock_minimo: accMinimo ? parseInt(accMinimo) : 0,
-          costo_ars: accCosto ? parseFloat(accCosto) : null,
-          precio_lista_ars: accPrecio ? parseFloat(accPrecio) : null,
-          sucursal: suc, activo: true,
-        })
-        error = e
-      }
-
-      if (!error) {
-        await sb.from('movimientos_stock').insert({
-          tipo: 'ingreso', producto_tipo: 'accesorio',
-          producto_descripcion: accNombre.trim(),
-          sucursal: suc, cantidad_antes: antes, cantidad_despues: despues, diferencia: qty,
-          motivo: 'Ingreso de mercadería',
-          usuario_id: usuario.id, usuario_nombre: usuario.nombre,
-        })
-      } else {
-        errores.push(suc)
+        let error, antes = 0, despues = qty
+        if (existente) {
+          antes = existente.stock_actual || 0
+          despues = antes + qty
+          const { error: e } = await sb.from('accesorios').update({ stock_actual: despues }).eq('id', existente.id)
+          error = e
+        } else {
+          const { error: e } = await sb.from('accesorios').insert({
+            nombre: row.nombre.trim(),
+            categoria: row.categoria.trim() || null,
+            stock_actual: qty,
+            stock_minimo: row.minimo ? parseInt(row.minimo) : 0,
+            costo_ars: row.costo ? parseFloat(row.costo) : null,
+            precio_lista_ars: row.precio ? parseFloat(row.precio) : null,
+            sucursal: suc, activo: true,
+          })
+          error = e
+        }
+        if (!error) {
+          await sb.from('movimientos_stock').insert({
+            tipo: 'ingreso', producto_tipo: 'accesorio',
+            producto_descripcion: row.nombre.trim(),
+            sucursal: suc, cantidad_antes: antes, cantidad_despues: despues, diferencia: qty,
+            motivo: 'Ingreso de mercadería',
+            usuario_id: usuario.id, usuario_nombre: usuario.nombre,
+          })
+          ok++
+        } else { errores++ }
       }
     }
 
     setSavingIng(false)
-    if (errores.length > 0) {
-      setIngMsg({ ok: false, text: `Error en sucursal(es): ${errores.join(', ')}` }); return
+    if (errores > 0) {
+      setIngMsg({ ok: false, text: `${ok} guardados, ${errores} con error` })
+    } else {
+      setIngMsg({ ok: true, text: `✓ ${validas.length} producto(s) ingresado(s) correctamente` })
+      setRows(Array.from({ length: 5 }, newRow))
     }
-    const resumen = entradas.map(s => `${s.toUpperCase()}: +${accQty[s]}`).join(' | ')
-    setIngMsg({ ok: true, text: `✓ ${accNombre} ingresado — ${resumen}` })
-    setAccNombre(''); setAccCategoria(''); setAccCosto(''); setAccPrecio(''); setAccMinimo('')
-    setAccQty({ '695': '', '642': '', 'sanjuan': '' })
     cargarStock(sucursal)
   }
 
@@ -402,36 +473,87 @@ export default function StockPage() {
             </div>
 
             {tipoIngreso === 'accesorio' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <Field label="NOMBRE *"><input value={accNombre} onChange={e => setAccNombre(e.target.value)} placeholder="Vidrio templado Samsung A15" style={inp} /></Field>
-                <Field label="CATEGORÍA"><input value={accCategoria} onChange={e => setAccCategoria(e.target.value)} placeholder="vidrio / cargador / funda..." style={inp} /></Field>
-                <Field label="COSTO UNITARIO (ARS)"><input value={accCosto} onChange={e => setAccCosto(e.target.value)} placeholder="900" type="number" style={inp} /></Field>
-                <Field label="PRECIO VENTA (ARS)"><input value={accPrecio} onChange={e => setAccPrecio(e.target.value)} placeholder="3500" type="number" style={inp} /></Field>
-                <Field label="STOCK MÍNIMO"><input value={accMinimo} onChange={e => setAccMinimo(e.target.value)} placeholder="3" type="number" style={inp} /></Field>
+              <div onPaste={handlePaste}>
+                {/* Instrucciones paste */}
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: C.bg3, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
+                  <strong style={{ color: C.text }}>Dos formas de cargar:</strong><br />
+                  <span style={{ color: C.accent }}>1. Tipear directo</span> en la tabla de abajo.<br />
+                  <span style={{ color: C.accent }}>2. Pegar desde Excel</span> — copiá el rango y pegá acá (Ctrl+V). Orden de columnas: <code style={{ background: C.bg4, padding: '1px 5px', borderRadius: 4 }}>Nombre | Categoría | Costo | Precio | Mín | 695 | 642 | SJ</code>
+                </div>
 
-                {/* Cantidades por sucursal */}
-                <div>
-                  <div style={{ fontSize: 11, color: C.text2, marginBottom: 10, letterSpacing: '.05em' }}>CANTIDAD POR SUCURSAL</div>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    {SUCURSALES.map(s => (
-                      <div key={s} style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, color: C.text2, marginBottom: 6, textAlign: 'center' }}>{s.toUpperCase()}</div>
-                        <input
-                          value={accQty[s]} onChange={e => setAccQty(p => ({ ...p, [s]: e.target.value }))}
-                          placeholder="0" type="number" min="0"
-                          style={{ ...inp, textAlign: 'center', padding: '12px 8px', fontSize: 18, fontWeight: 700 }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.text2, marginTop: 8 }}>
-                    Total a ingresar: <strong style={{ color: C.text }}>{SUCURSALES.reduce((s, k) => s + (parseInt(accQty[k] || '0') || 0), 0)} unidades</strong>
+                {/* Tabla */}
+                <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: C.bg4 }}>
+                        {['Nombre *', 'Categoría', 'Costo', 'Precio venta', 'Mín', '695', '642', 'SJ', ''].map((h, i) => (
+                          <th key={i} style={{ padding: '7px 6px', color: C.text2, fontWeight: 600, textAlign: i >= 5 && i <= 7 ? 'center' : 'left', whiteSpace: 'nowrap', borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row._id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: '3px 4px', minWidth: 180, position: 'relative' }}>
+                            <input
+                              value={row.nombre}
+                              onChange={e => updateRow(row._id, 'nombre', e.target.value)}
+                              onBlur={() => setTimeout(() => { setOpenSug(null) }, 150)}
+                              placeholder="Nombre del producto"
+                              style={{ ...cellInp, borderColor: openSug === row._id ? C.blue : 'transparent' }}
+                            />
+                            {openSug === row._id && (suggestions[row._id] || []).length > 0 && (
+                              <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: C.bg4, border: `1px solid ${C.blue}`, borderRadius: 7, minWidth: 220, boxShadow: '0 4px 16px rgba(0,0,0,.5)', overflow: 'hidden' }}>
+                                <div style={{ fontSize: 10, color: C.text2, padding: '5px 10px', borderBottom: `1px solid ${C.border}` }}>Productos existentes — seleccioná para autocompletar</div>
+                                {(suggestions[row._id] || []).map((item, i) => (
+                                  <div key={i} onMouseDown={() => selectSuggestion(row._id, item)} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: C.text, borderBottom: `1px solid ${C.border}` }}
+                                    onMouseEnter={e => e.currentTarget.style.background = C.bg3}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    <div style={{ fontWeight: 700 }}>{item.nombre}</div>
+                                    <div style={{ fontSize: 10, color: C.text2 }}>{item.categoria || ''}{item.precio_lista_ars ? ` · ${fmt(item.precio_lista_ars)}` : ''}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 90 }}>
+                            <input value={row.categoria} onChange={e => updateRow(row._id, 'categoria', e.target.value)} placeholder="vidrio..." style={cellInp} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 80 }}>
+                            <input value={row.costo} onChange={e => updateRow(row._id, 'costo', e.target.value)} placeholder="900" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 80 }}>
+                            <input value={row.precio} onChange={e => updateRow(row._id, 'precio', e.target.value)} placeholder="3500" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 50 }}>
+                            <input value={row.minimo} onChange={e => updateRow(row._id, 'minimo', e.target.value)} placeholder="3" type="number" style={{ ...cellInp, textAlign: 'center' }} />
+                          </td>
+                          {[['q695','695'],['q642','642'],['qsj','SJ']].map(([field, label]) => (
+                            <td key={field} style={{ padding: '3px 4px', minWidth: 52 }}>
+                              <input value={row[field]} onChange={e => updateRow(row._id, field, e.target.value)} placeholder="0" type="number" min="0"
+                                style={{ ...cellInp, textAlign: 'center', fontWeight: 700, color: parseInt(row[field]) > 0 ? C.accent : C.text2 }} />
+                            </td>
+                          ))}
+                          <td style={{ padding: '3px 4px' }}>
+                            <button onClick={() => removeRow(row._id)} style={{ background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontSize: 16, padding: '2px 6px' }}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  <button onClick={() => addRows(5)} style={{ background: C.bg3, border: `1px solid ${C.border}`, color: C.text2, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>+ 5 filas</button>
+                  <button onClick={() => setRows(Array.from({ length: 5 }, newRow))} style={{ background: C.bg3, border: `1px solid ${C.border}`, color: C.red, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>Limpiar</button>
+                  <div style={{ fontSize: 11, color: C.text2, display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+                    {rows.filter(r => r.nombre.trim()).length} productos listos
                   </div>
                 </div>
 
                 {ingMsg && <Msg msg={ingMsg} />}
-                <button onClick={guardarAccesorio} disabled={savingIng || !accNombre || SUCURSALES.every(s => !parseInt(accQty[s] || '0'))} style={btn(savingIng || !accNombre || SUCURSALES.every(s => !parseInt(accQty[s] || '0')))}>
-                  {savingIng ? 'Guardando...' : 'Ingresar accesorio'}
+                <button onClick={guardarAccesorios} disabled={savingIng || rows.every(r => !r.nombre.trim())} style={btn(savingIng || rows.every(r => !r.nombre.trim()))}>
+                  {savingIng ? 'Guardando...' : `Guardar ${rows.filter(r => r.nombre.trim() && (parseInt(r.q695)||0)+(parseInt(r.q642)||0)+(parseInt(r.qsj)||0)>0).length} producto(s)`}
                 </button>
               </div>
             ) : (
@@ -718,6 +840,15 @@ const inp = {
   background: '#21262d', border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 8, padding: '10px 12px', color: '#f0f6fc',
   fontSize: 14, outline: 'none', fontFamily: "'DM Mono', monospace",
+}
+
+const cellInp = {
+  width: '100%', boxSizing: 'border-box',
+  background: 'transparent', border: '1px solid transparent',
+  borderRadius: 5, padding: '5px 6px', color: '#f0f6fc',
+  fontSize: 12, outline: 'none', fontFamily: "'DM Mono', monospace",
+  transition: 'border-color .15s',
+  onFocus: undefined,
 }
 
 const btn = (disabled) => ({
