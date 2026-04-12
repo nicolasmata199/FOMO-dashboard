@@ -90,7 +90,7 @@ export async function POST(req) {
         const { data: acc } = await sb.from('accesorios').select('stock_actual').eq('id', item.accesorio_id).single()
         if (acc) {
           await sb.from('accesorios')
-            .update({ stock_actual: Math.max(0, (acc.stock_actual || 0) - item.cantidad) })
+            .update({ stock_actual: (acc.stock_actual || 0) - item.cantidad })
             .eq('id', item.accesorio_id)
         }
       }

@@ -447,19 +447,24 @@ export default function StockPage() {
                 {accesorios.length === 0
                   ? <Empty text="Sin accesorios en stock" />
                   : accesorios.map(a => {
-                    const bajo = (a.stock_actual || 0) <= (a.stock_minimo || 0)
+                    const stock = a.stock_actual || 0
+                    const negativo = stock < 0
+                    const bajo = !negativo && stock <= (a.stock_minimo || 0)
+                    const borderColor = negativo ? C.red : bajo ? C.orange : C.border
+                    const stockColor = negativo ? C.red : bajo ? C.orange : C.green
                     return (
-                      <Card key={a.id} style={{ marginBottom: 6, borderColor: bajo ? C.orange : C.border }}>
+                      <Card key={a.id} style={{ marginBottom: 6, borderColor }}>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700 }}>{a.nombre}</div>
                           <div style={{ fontSize: 11, color: C.text2, marginTop: 2 }}>
                             {a.categoria || ''}
-                            {bajo && <span style={{ color: C.orange, marginLeft: 8 }}>⚠ stock bajo</span>}
+                            {negativo && <span style={{ color: C.red, marginLeft: 8 }}>⚠ stock negativo — cargar mercaderia</span>}
+                            {bajo && !negativo && <span style={{ color: C.orange, marginLeft: 8 }}>⚠ stock bajo</span>}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: bajo ? C.orange : C.green }}>{a.stock_actual}</div>
-                          <div style={{ fontSize: 10, color: C.text2 }}>mín: {a.stock_minimo || 0}</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: stockColor }}>{stock}</div>
+                          <div style={{ fontSize: 10, color: C.text2 }}>min: {a.stock_minimo || 0}</div>
                         </div>
                       </Card>
                     )

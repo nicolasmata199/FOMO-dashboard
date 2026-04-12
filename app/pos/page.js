@@ -365,17 +365,6 @@ export default function POSPage() {
   const confirmarVenta = async () => {
     setErr(''); setLoading(true)
     try {
-      // Validar stock suficiente para accesorios
-      for (const item of carrito) {
-        if (item._tipo === 'accesorio' && item.accesorio_id) {
-          const { data: acc } = await sb.from('accesorios').select('stock_actual,nombre').eq('id', item.accesorio_id).single()
-          if (acc && (acc.stock_actual || 0) < item.cantidad) {
-            setErr(`Stock insuficiente: "${acc.nombre}" — hay ${acc.stock_actual} unidad(es), pediste ${item.cantidad}.`)
-            setLoading(false)
-            return
-          }
-        }
-      }
       const pagosPayload = pagos
         .filter(p => (parseFloat(p.monto) || 0) > 0)
         .map(p => {
