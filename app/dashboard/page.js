@@ -1496,6 +1496,66 @@ export default function Dashboard() {
       {/* P&L */}
       {tab === 'pl' && (
         <div className="fomo-content" style={S.page}>
+
+          {/* ── PUNTO DE EQUILIBRIO ── */}
+          {(() => {
+            const margenContrib = 1 - CMV_R                          // 38.8%
+            const pe = Math.round(FIJOS / margenContrib)             // ventas necesarias para cubrir fijos
+            const faltante = Math.max(0, pe - ventasMes)
+            const pct = Math.min(100, Math.round(ventasMes / pe * 100))
+            const diasMes = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate()
+            const diaHoy = new Date().getDate()
+            const ritmoActual = diaHoy > 0 ? ventasMes / diaHoy : 0
+            const diasNecesarios = ritmoActual > 0 ? Math.ceil(pe / ritmoActual) : diasMes
+            const enCamino = diasNecesarios <= diasMes
+            const barColor = pct >= 100 ? '#3ddc84' : pct >= 70 ? '#f5a623' : '#ff5050'
+            return (
+              <>
+                <div style={S.sec}>Punto de equilibrio — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
+                <div style={{...S.card, padding:'16px'}}>
+                  {/* Número grande */}
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14}}>
+                    <div>
+                      <div style={{fontSize:11, color:C.muted, letterSpacing:'.06em', marginBottom:4}}>VENTAS NECESARIAS PARA NO PERDER</div>
+                      <div style={{fontSize:26, fontWeight:800, fontFamily:'monospace', color:C.text}}>{fmtS(pe)}</div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:11, color:C.muted, letterSpacing:'.06em', marginBottom:4}}>LLEVAS</div>
+                      <div style={{fontSize:26, fontWeight:800, fontFamily:'monospace', color:barColor}}>{pct}%</div>
+                    </div>
+                  </div>
+                  {/* Barra */}
+                  <div style={{background:'rgba(255,255,255,0.07)', borderRadius:6, height:10, marginBottom:12, overflow:'hidden'}}>
+                    <div style={{width:`${pct}%`, background:barColor, height:'100%', borderRadius:6, transition:'width .4s'}} />
+                  </div>
+                  {/* Detalle */}
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                    {[
+                      {l:'Vendido este mes',    v: fmtS(ventasMes), c: C.text},
+                      {l:'Falta para equilibrio', v: faltante > 0 ? fmtS(faltante) : '✓ Superado', c: faltante > 0 ? C.red : '#3ddc84'},
+                      {l:'Margen de contrib.',  v: `${(margenContrib*100).toFixed(1)}%`, c: C.blue},
+                      {l:'Ritmo diario actual', v: fmtS(ritmoActual), c: C.text},
+                    ].map((r,i) => (
+                      <div key={i} style={{background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'10px 12px'}}>
+                        <div style={{fontSize:10, color:C.muted, marginBottom:4}}>{r.l}</div>
+                        <div style={{fontSize:13, fontWeight:700, fontFamily:'monospace', color:r.c}}>{r.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Proyección */}
+                  <div style={{marginTop:12, padding:'10px 12px', background: enCamino ? 'rgba(61,220,132,0.08)' : 'rgba(255,80,80,0.08)', borderRadius:8, border:`1px solid ${enCamino ? 'rgba(61,220,132,0.2)' : 'rgba(255,80,80,0.2)'}`, fontSize:12, color: enCamino ? '#3ddc84' : C.red}}>
+                    {pct >= 100
+                      ? '\u2713 Ya superaste el punto de equilibrio este mes.'
+                      : enCamino
+                        ? ('Al ritmo actual alcanzas el equilibrio en ' + diasNecesarios + ' dias \u2014 antes de fin de mes.')
+                        : ('Al ritmo actual necesitarias ' + diasNecesarios + ' dias. Necesitas vender ' + fmtS(Math.round(faltante / Math.max(1, diasMes - diaHoy + 1))) + '/dia para llegar.')
+                    }
+                  </div>
+                </div>
+              </>
+            )
+          })()}
+
           <div style={S.sec}>P&L del mes — {new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})}</div>
           <div style={S.card}>
             {[
