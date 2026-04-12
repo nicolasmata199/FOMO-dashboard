@@ -233,14 +233,24 @@ export default function StockPage() {
   }
 
   function selectSuggestion(rowId, item) {
-    setRows(prev => prev.map(r => r._id === rowId ? {
-      ...r,
-      nombre:   item.nombre,
-      categoria: item.categoria || r.categoria,
-      costo:    item.costo_ars ? String(item.costo_ars) : r.costo,
-      precio:   item.precio_lista_ars ? String(item.precio_lista_ars) : r.precio,
-      minimo:   item.stock_minimo != null ? String(item.stock_minimo) : r.minimo,
-    } : r))
+    setRows(prev => prev.map(r => {
+      if (r._id !== rowId) return r
+      const costoSistema = item.costo_ars ? String(item.costo_ars) : ''
+      const precioSistema = item.precio_lista_ars ? String(item.precio_lista_ars) : ''
+      return {
+        ...r,
+        nombre:        item.nombre,
+        categoria:     item.categoria || r.categoria,
+        costo:         costoSistema,
+        precio:        precioSistema,
+        minimo:        item.stock_minimo != null ? String(item.stock_minimo) : r.minimo,
+        // guardar valores del sistema para detectar cambios
+        _costoSistema: costoSistema,
+        _precioSistema: precioSistema,
+        _updateCosto:  false,
+        _updatePrecio: false,
+      }
+    }))
     setSuggestions(p => ({ ...p, [rowId]: [] }))
     setOpenSug(null)
   }
@@ -271,7 +281,10 @@ export default function StockPage() {
         if (existente) {
           antes = existente.stock_actual || 0
           despues = antes + qty
-          const { error: e } = await sb.from('accesorios').update({ stock_actual: despues }).eq('id', existente.id)
+          const updates = { stock_actual: despues }
+          if (row._updateCosto && row.costo)   updates.costo_ars = parseFloat(row.costo)
+          if (row._updatePrecio && row.precio)  updates.precio_lista_ars = parseFloat(row.precio)
+          const { error: e } = await sb.from('accesorios').update(updates).eq('id', existente.id)
           error = e
         } else {
           const { error: e } = await sb.from('accesorios').insert({
@@ -519,11 +532,27 @@ export default function StockPage() {
                           <td style={{ padding: '3px 4px', minWidth: 90 }}>
                             <input value={row.categoria} onChange={e => updateRow(row._id, 'categoria', e.target.value)} placeholder="vidrio..." style={cellInp} />
                           </td>
-                          <td style={{ padding: '3px 4px', minWidth: 80 }}>
+                          <td style={{ padding: '3px 4px', minWidth: 90 }}>
                             <input value={row.costo} onChange={e => updateRow(row._id, 'costo', e.target.value)} placeholder="900" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                            {row._costoSistema && row.costo !== row._costoSistema && (
+                              <div style={{ fontSize: 10, lineHeight: 1.3, marginTop: 2, padding: '3px 5px', background: 'rgba(227,179,65,.12)', border: '1px solid rgba(227,179,65,.3)', borderRadius: 4 }}>
+                                <span style={{ color: C.orange }}>Antes: {fmt(row._costoSistema)}</span>
+                                <button onMouseDown={() => updateRow(row._id, '_updateCosto', !row._updateCosto)} style={{ marginLeft: 5, background: row._updateCosto ? C.orange : C.bg4, color: row._updateCosto ? '#000' : C.text2, border: 'none', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', fontSize: 10, fontWeight: 700 }}>
+                                  {row._updateCosto ? 'ACTUALIZAR ✓' : 'NO ACTUALIZAR'}
+                                </button>
+                              </div>
+                            )}
                           </td>
-                          <td style={{ padding: '3px 4px', minWidth: 80 }}>
+                          <td style={{ padding: '3px 4px', minWidth: 90 }}>
                             <input value={row.precio} onChange={e => updateRow(row._id, 'precio', e.target.value)} placeholder="3500" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                            {row._precioSistema && row.precio !== row._precioSistema && (
+                              <div style={{ fontSize: 10, lineHeight: 1.3, marginTop: 2, padding: '3px 5px', background: 'rgba(227,179,65,.12)', border: '1px solid rgba(227,179,65,.3)', borderRadius: 4 }}>
+                                <span style={{ color: C.orange }}>Antes: {fmt(row._precioSistema)}</span>
+                                <button onMouseDown={() => updateRow(row._id, '_updatePrecio', !row._updatePrecio)} style={{ marginLeft: 5, background: row._updatePrecio ? C.orange : C.bg4, color: row._updatePrecio ? '#000' : C.text2, border: 'none', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', fontSize: 10, fontWeight: 700 }}>
+                                  {row._updatePrecio ? 'ACTUALIZAR ✓' : 'NO ACTUALIZAR'}
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '3px 4px', minWidth: 50 }}>
                             <input value={row.minimo} onChange={e => updateRow(row._id, 'minimo', e.target.value)} placeholder="3" type="number" style={{ ...cellInp, textAlign: 'center' }} />
