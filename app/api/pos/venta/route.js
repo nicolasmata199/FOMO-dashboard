@@ -20,7 +20,7 @@ export async function POST(req) {
 
     // 0b. Validar payload
     const body = await req.json()
-    const { vendedora_id, vendedora_nombre, cliente_id, carrito, pagos, total_ars, total_base_ars, intereses_ars } = body
+    const { vendedora_id, vendedora_nombre, sucursal, cliente_id, carrito, pagos, total_ars, total_base_ars, intereses_ars } = body
 
     if (!vendedora_id) return NextResponse.json({ error: 'Falta vendedora_id' }, { status: 400 })
     if (!Array.isArray(carrito) || carrito.length === 0) return NextResponse.json({ error: 'Carrito vacío' }, { status: 400 })
@@ -41,6 +41,7 @@ export async function POST(req) {
         cliente_id: cliente_id || null,
         vendedora_id,
         vendedora_nombre: vendedora_nombre || null,
+        sucursal: sucursal || null,
         total_ars,
         total_base_ars: total_base_ars || total_ars,
         intereses_ars: intereses_ars || 0,
@@ -97,7 +98,7 @@ export async function POST(req) {
     }
 
     // 5. Procesar plan canje — ingresa celular al stock como usado_premium
-    const sucursalVendedora = (await sb.from('usuarios_fomo').select('sucursal').eq('id', vendedora_id).single()).data?.sucursal || null
+    const sucursalVendedora = sucursal || (await sb.from('usuarios_fomo').select('sucursal').eq('id', vendedora_id).single()).data?.sucursal || null
     for (const pago of pagoRows) {
       if (pago.forma_pago === 'plan_canje' && pago.canje_imei) {
         await sb.from('existencias').insert({

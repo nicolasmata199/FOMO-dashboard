@@ -387,7 +387,7 @@ export default function POSPage() {
       const res = await fetch('/api/pos/venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ vendedora_id: vendedora.id, cliente_id: cliente?.id || null, carrito, pagos: pagosPayload, total_ars: totalConRecargo, total_base_ars: totalCarrito, intereses_ars: totalConRecargo - totalCarrito, vendedora_nombre: vendedora.nombre }),
+        body: JSON.stringify({ vendedora_id: vendedora.id, vendedora_nombre: vendedora.nombre, sucursal: vendedora.sucursal, cliente_id: cliente?.id || null, carrito, pagos: pagosPayload, total_ars: totalConRecargo, total_base_ars: totalCarrito, intereses_ars: totalConRecargo - totalCarrito }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al registrar')
