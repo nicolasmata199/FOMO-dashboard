@@ -37,7 +37,7 @@ export async function POST(req) {
     const { data: venta, error: e1 } = await sb
       .from('ventas')
       .insert({
-        fecha: new Date().toISOString(),
+        fecha: new Date(new Date().getTime() - 3 * 60 * 60 * 1000).toISOString().split('T')[0],
         cliente_id: cliente_id || null,
         vendedora_id,
         vendedora_nombre: vendedora_nombre || null,

@@ -208,20 +208,12 @@ export default function Dashboard() {
 
     // Cálculo de líquido acumulado
     const rowsAcum = ddAcum.data || []
-    console.log('[FOMO] ddAcum rows:', rowsAcum.length, ddAcum.error?.message)
-    console.log('[FOMO] ddAcum data:', JSON.stringify(rowsAcum))
     const efectivoAcum = rowsAcum.reduce((s,r) => s+(r.efectivo||0), 0)
     const transferAcum = rowsAcum.reduce((s,r) => s+(r.transferencias||0), 0)
     const chequeAcum = rowsAcum.reduce((s,r) => s+(r.cheque_recibido||0), 0)
     const saldoBancoUlt = rowsAcum.reduce((s,r) => s+(r.saldo_banco||0), 0)
     const totalGastosAcum = (gAcum.data||[]).reduce((s,r) => s+(r.monto||0), 0)
     const totalLiquido = efectivoAcum + transferAcum + chequeAcum + saldoBancoUlt
-    console.log('[FOMO] efectivo_acum:', efectivoAcum)
-    console.log('[FOMO] transf_acum:', transferAcum)
-    console.log('[FOMO] cheque_acum:', chequeAcum)
-    console.log('[FOMO] banco:', saldoBancoUlt)
-    console.log('[FOMO] gastos:', totalGastosAcum)
-    console.log('[FOMO] totalLiquido:', totalLiquido)
     setAcumData({efectivo:efectivoAcum, transferencias:transferAcum, cheque:chequeAcum, saldoBanco:saldoBancoUlt, gastos:totalGastosAcum})
     setLiquidoTotal(totalLiquido)
 

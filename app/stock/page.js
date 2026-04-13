@@ -104,7 +104,7 @@ export default function StockPage() {
 
   // cargar catálogo de accesorios para autocompletado
   useEffect(() => {
-    if (tab === 'ingreso' && tipoIngreso === 'accesorio' && catalogo.length === 0) {
+    if (tab === 'ingreso' && tipoIngreso === 'accesorio') {
       sb.from('accesorios').select('nombre,categoria,costo_ars,precio_lista_ars,stock_minimo').eq('activo', true).order('nombre')
         .then(({ data }) => {
           if (!data) return
