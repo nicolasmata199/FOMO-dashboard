@@ -415,7 +415,7 @@ export default function StockPage() {
         ))}
       </div>
 
-      <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
 
         {/* ══ STOCK ACTUAL ══════════════════════════════════════════════════ */}
         {tab === 'stock' && (

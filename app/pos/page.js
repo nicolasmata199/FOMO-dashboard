@@ -410,7 +410,7 @@ export default function POSPage() {
   const abrirCierre = () => setCierreOpen(true)
 
   // ─────────────────────────────────────────────────────────────────────────
-  const pg = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'DM Mono', monospace", padding: 16, maxWidth: 480, margin: '0 auto', paddingBottom: 48 }
+  const pg = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'DM Mono', monospace", padding: 16, maxWidth: 1200, margin: '0 auto', paddingBottom: 48 }
 
   if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 

@@ -223,7 +223,7 @@ export default function VentasDashboard() {
   if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', padding:'20px 16px', color:C.text, fontFamily:"'DM Mono', monospace", maxWidth:480, margin:'0 auto' }}>
+    <div style={{ background:C.bg, minHeight:'100vh', padding:'20px 16px', color:C.text, fontFamily:"'DM Mono', monospace", maxWidth:1200, margin:'0 auto' }}>
 
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
