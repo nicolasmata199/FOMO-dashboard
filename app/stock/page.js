@@ -409,7 +409,7 @@ export default function StockPage() {
           }} style={{
             background: 'none', border: 'none', color: tab === t.id ? C.accent : C.text2,
             borderBottom: tab === t.id ? `2px solid ${C.accent}` : '2px solid transparent',
-            padding: '12px 18px', cursor: 'pointer', fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
+            padding: '14px 20px', cursor: 'pointer', fontSize: 15, fontWeight: tab === t.id ? 700 : 400,
             fontFamily: "'Syne', sans-serif", whiteSpace: 'nowrap',
           }}>{t.label}</button>
         ))}
@@ -429,14 +429,14 @@ export default function StockPage() {
                   : celulares.map(c => (
                     <Card key={c.imei} style={{ marginBottom: 6 }}>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{c.modelo}</div>
-                        <div style={{ fontSize: 11, color: C.text2, marginTop: 2 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{c.modelo}</div>
+                        <div style={{ fontSize: 13, color: C.text2, marginTop: 2 }}>
                           IMEI: {c.imei}{c.color ? ` · ${c.color}` : ''}{c.estado_equipo !== 'nuevo' ? ` · ${c.estado_equipo}` : ''}{c.bateria_pct ? ` · 🔋${c.bateria_pct}%` : ''}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>{fmt(c.precio_venta_ars)}</div>
-                        {c.costo_ars && <div style={{ fontSize: 10, color: C.text2 }}>Costo: {fmt(c.costo_ars)}</div>}
+                        {c.costo_ars && <div style={{ fontSize: 12, color: C.text2 }}>Costo: {fmt(c.costo_ars)}</div>}
                       </div>
                     </Card>
                   ))
@@ -455,8 +455,8 @@ export default function StockPage() {
                     return (
                       <Card key={a.id} style={{ marginBottom: 6, borderColor }}>
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{a.nombre}</div>
-                          <div style={{ fontSize: 11, color: C.text2, marginTop: 2 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{a.nombre}</div>
+                          <div style={{ fontSize: 13, color: C.text2, marginTop: 2 }}>
                             {a.categoria || ''}
                             {negativo && <span style={{ color: C.red, marginLeft: 8 }}>⚠ stock negativo — cargar mercaderia</span>}
                             {bajo && !negativo && <span style={{ color: C.orange, marginLeft: 8 }}>⚠ stock bajo</span>}
@@ -464,7 +464,7 @@ export default function StockPage() {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: 22, fontWeight: 800, color: stockColor }}>{stock}</div>
-                          <div style={{ fontSize: 10, color: C.text2 }}>min: {a.stock_minimo || 0}</div>
+                          <div style={{ fontSize: 12, color: C.text2 }}>min: {a.stock_minimo || 0}</div>
                         </div>
                       </Card>
                     )
@@ -640,8 +640,8 @@ export default function StockPage() {
                     return (
                       <Card key={a.id} style={{ marginBottom: 6, borderColor: hayDelta ? C.blue : C.border }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{a.nombre}</div>
-                          <div style={{ fontSize: 11, color: C.text2, marginTop: 2 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{a.nombre}</div>
+                          <div style={{ fontSize: 13, color: C.text2, marginTop: 2 }}>
                             Stock actual: {a.stock_actual}
                             {hayDelta && (
                               <span style={{ marginLeft: 8, color: delta > 0 ? C.green : C.red }}>
@@ -747,8 +747,8 @@ export default function StockPage() {
                       return (
                         <Card key={a.id} style={{ marginBottom: 6, borderColor: diff !== 0 ? C.red : C.border }}>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 700 }}>{a.nombre}</div>
-                            <div style={{ fontSize: 11, color: C.text2 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>{a.nombre}</div>
+                            <div style={{ fontSize: 13, color: C.text2 }}>
                               Sistema: {a.stock_actual}
                               {diff !== 0 && <span style={{ color: diff < 0 ? C.red : C.green, marginLeft: 8 }}>{diff > 0 ? '+' : ''}{diff}</span>}
                             </div>
@@ -815,8 +815,8 @@ function SucursalSelector({ value, onChange }) {
           background: value === s ? '#FFD700' : '#161b22',
           color: value === s ? '#000' : '#8b949e',
           border: `1px solid ${value === s ? '#FFD700' : 'rgba(255,255,255,0.08)'}`,
-          borderRadius: 8, padding: '6px 16px', cursor: 'pointer',
-          fontSize: 13, fontWeight: 700, fontFamily: "'Syne', sans-serif",
+          borderRadius: 8, padding: '10px 18px', cursor: 'pointer',
+          fontSize: 15, fontWeight: 700, fontFamily: "'Syne', sans-serif",
         }}>SUC. {s.toUpperCase()}</button>
       ))}
     </div>
@@ -824,7 +824,7 @@ function SucursalSelector({ value, onChange }) {
 }
 
 function SeccionLabel({ text }) {
-  return <div style={{ fontSize: 11, color: '#8b949e', letterSpacing: '.08em', marginBottom: 10 }}>{text}</div>
+  return <div style={{ fontSize: 13, color: '#8b949e', letterSpacing: '.08em', marginBottom: 10 }}>{text}</div>
 }
 
 function Card({ children, style }) {
@@ -846,7 +846,7 @@ function Loading() {
 function Field({ label, children }) {
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6, letterSpacing: '.05em' }}>{label}</div>
+      <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 6, letterSpacing: '.05em' }}>{label}</div>
       {children}
     </div>
   )
@@ -878,8 +878,8 @@ const inp = {
 const cellInp = {
   width: '100%', boxSizing: 'border-box',
   background: 'transparent', border: '1px solid transparent',
-  borderRadius: 5, padding: '5px 6px', color: '#f0f6fc',
-  fontSize: 12, outline: 'none', fontFamily: "'DM Mono', monospace",
+  borderRadius: 5, padding: '7px 6px', color: '#f0f6fc',
+  fontSize: 13, outline: 'none', fontFamily: "'DM Mono', monospace",
   transition: 'border-color .15s',
   onFocus: undefined,
 }

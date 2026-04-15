@@ -72,8 +72,8 @@ function PrecioDisplay({ precioBase, forma, cotizacion, size = 'sm' }) {
   const d  = getPrecioDisplay(precioBase, forma, cotizacion)
   const fp = FORMAS_PAGO.find(f => f.id === forma)
   const lg = size === 'lg'
-  const big = lg ? 22 : 14
-  const sub = lg ? 12 : 10
+  const big = lg ? 22 : 15
+  const sub = lg ? 13 : 12
 
   if (d.tipo === 'cuotas') return (
     <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -148,7 +148,7 @@ function Btn({ children, onClick, variant = 'primary', disabled }) {
 
 function Label({ children }) {
   return (
-    <div style={{ fontSize: 11, color: C.text2, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+    <div style={{ fontSize: 13, color: C.text2, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
       {children}
     </div>
   )
@@ -159,7 +159,7 @@ function Badge({ children, color }) {
   return (
     <span style={{
       background: col + '25', color: col, borderRadius: 4,
-      padding: '2px 7px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+      padding: '3px 8px', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
     }}>
       {children}
     </span>
@@ -173,8 +173,8 @@ function SmallBtn({ children, onClick, danger }) {
       style={{
         background: 'transparent',
         border: `1px solid ${danger ? C.red + '50' : C.border}`,
-        borderRadius: 6, width: 30, height: 30, cursor: 'pointer',
-        color: danger ? C.red : C.text, fontSize: 14,
+        borderRadius: 6, width: 36, height: 36, cursor: 'pointer',
+        color: danger ? C.red : C.text, fontSize: 16,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: "'DM Mono', monospace", flexShrink: 0,
       }}

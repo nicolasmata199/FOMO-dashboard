@@ -27,7 +27,7 @@ function BarraProgreso({ actual, objetivo }) {
   const c = pct >= 100 ? C.green : pct >= 70 ? C.accent : C.red
   return (
     <div style={{ marginTop: 6 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:C.text2, marginBottom:3 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:C.text2, marginBottom:3 }}>
         <span>{actual} / {objetivo}</span>
         <span>{Math.round(pct)}%</span>
       </div>
@@ -208,15 +208,15 @@ export default function VentasDashboard() {
   }
 
   const estiloTab = (t) => ({
-    padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 600,
+    padding: '10px 24px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 600,
     background: tab === t ? C.accent : C.bg3,
     color: tab === t ? '#000' : C.text2
   })
 
   const inputStyle = {
     width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8,
-    padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none',
+    padding: '10px 12px', color: C.text, fontSize: 15, outline: 'none',
     fontFamily: "'DM Mono', monospace", boxSizing: 'border-box'
   }
 
@@ -404,15 +404,15 @@ export default function VentasDashboard() {
                       <div style={{ display:'flex', gap:8, marginTop:14 }}>
                         <button
                           onClick={() => abrirEditar(v)}
-                          style={{ flex:1, padding:'8px', background:C.blue+'22', border:`1px solid ${C.blue}44`, borderRadius:8,
-                            color:C.blue, fontSize:12, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                          style={{ flex:1, padding:'11px', background:C.blue+'22', border:`1px solid ${C.blue}44`, borderRadius:8,
+                            color:C.blue, fontSize:14, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => setModalAnular(v)}
-                          style={{ flex:1, padding:'8px', background:C.red+'22', border:`1px solid ${C.red}44`, borderRadius:8,
-                            color:C.red, fontSize:12, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                          style={{ flex:1, padding:'11px', background:C.red+'22', border:`1px solid ${C.red}44`, borderRadius:8,
+                            color:C.red, fontSize:14, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
                         >
                           Anular
                         </button>
