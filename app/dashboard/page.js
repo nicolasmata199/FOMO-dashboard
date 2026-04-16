@@ -836,7 +836,7 @@ export default function Dashboard() {
   function tipoBadge(t) {
     const m = {cheque:'#f5a623',echeq:'#f5a623',banco:'#5b9fff',impuesto:'#ff5050',sueldo:'#ff5050',servicio:'#7a7876',tarjeta:'#f5a623',proveedor:'#7a7876',personal:'#5b9fff',stock:'#3ddc84',alquiler:'#5b9fff',mercaderia:'#3ddc84',prestamo:'#a78bfa',cambio:'#22d3ee',otro:'#7a7876'}
     const l = {cheque:'CHQ',echeq:'ECHEQ',banco:'BCO',impuesto:'AFIP',sueldo:'SUE',servicio:'SVC',tarjeta:'TRJ',proveedor:'PRV',personal:'CRED',stock:'STK',alquiler:'ALQ',mercaderia:'MERC',prestamo:'PREST',cambio:'CAMBIO',otro:'OTRO'}
-    return <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:(m[t]||'#7a7876')+'22',color:m[t]||'#7a7876'}}>{l[t]||t.toUpperCase()}</span>
+    return <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'Inter, system-ui, sans-serif',background:(m[t]||'#7a7876')+'22',color:m[t]||'#7a7876'}}>{l[t]||t.toUpperCase()}</span>
   }
 
   const C = {
@@ -853,8 +853,8 @@ export default function Dashboard() {
     secPago: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#f5a623',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(245,166,35,0.2)'},
     secGasto: {fontSize:'11px',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#ff5050',marginBottom:'8px',marginTop:'28px',paddingTop:'18px',borderTop:'1px solid rgba(255,80,80,0.2)'},
     card: {background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:'14px',padding:'16px',marginBottom:'12px'},
-    inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
-    sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'DM Mono,monospace',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
+    inp: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.text,fontFamily:'Inter, system-ui, sans-serif',fontSize:'16px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
+    sel: {width:'100%',background:C.inputBg,border:`1px solid rgba(255,255,255,0.12)`,borderRadius:'10px',color:C.label,fontFamily:'Inter, system-ui, sans-serif',fontSize:'15px',padding:'12px 14px',outline:'none',boxSizing:'border-box'},
     btn: {width:'100%',background:C.accent,color:'#000',border:'none',borderRadius:'12px',padding:'14px',fontSize:'15px',fontWeight:700,fontFamily:"'Syne',sans-serif",cursor:'pointer'},
     row: {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 0',borderBottom:`1px solid ${C.cardBorder}`,fontSize:'14px'},
     label: {fontSize:'13px',color:C.label,display:'block',marginBottom:'8px',fontWeight:600},
@@ -863,7 +863,7 @@ export default function Dashboard() {
   if (loading) return (
     <div style={{minHeight:'100vh',background:C.bg,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'12px'}}>
       <div style={{fontSize:'28px',fontWeight:800,fontFamily:"'Syne',sans-serif",color:C.text}}>FO<span style={{color:C.accent}}>MO</span></div>
-      <p style={{color:C.label,fontFamily:'DM Mono,monospace',fontSize:'12px',letterSpacing:'.08em'}}>cargando...</p>
+      <p style={{color:C.label,fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',letterSpacing:'.08em'}}>cargando...</p>
     </div>
   )
 
@@ -889,9 +889,9 @@ export default function Dashboard() {
         .fomo-bottom-nav { display: flex; }
         .fomo-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
         .fomo-metric-card { width: 100%; min-width: 0; min-height: 100px; padding: 16px 12px; position: relative; overflow: visible; box-sizing: border-box; }
-        .fomo-metric-value { font-size: clamp(14px, 1.8vw, 26px); line-height: 1.1; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; width: 100%; overflow: visible; white-space: nowrap; }
+        .fomo-metric-value { font-size: clamp(14px, 1.8vw, 26px); line-height: 1.1; font-weight: 800; font-family: 'Inter', system-ui, sans-serif; letter-spacing: -1px; width: 100%; overflow: visible; white-space: nowrap; }
         .fomo-metric-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
-        .fomo-metric-sub { font-size: 11px; margin-top: 6px; font-family: 'DM Mono', monospace; }
+        .fomo-metric-sub { font-size: 11px; margin-top: 6px; font-family: 'Inter', system-ui, sans-serif; }
         @keyframes pulse-urgente { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
         .venc-urgente { animation: pulse-urgente 1.5s ease-in-out infinite; background: rgba(220,38,38,0.15) !important; }
         @media (min-width: 900px) {
@@ -922,7 +922,7 @@ export default function Dashboard() {
           .fomo-metric-sub { font-size: 11px !important; }
           .fomo-modal-inner { border-radius: 20px !important; max-width: 500px; margin: auto; }
           .fomo-modal-wrap { align-items: center !important; }
-          .fomo-sidebar-user { margin-top: auto; padding: 20px 28px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 12px; color: #8b9099; font-family: monospace; line-height: 1.6; }
+          .fomo-sidebar-user { margin-top: auto; padding: 20px 28px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 12px; color: #8b9099; font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; }
           .fomo-card-row { font-size: 14px !important; padding: 13px 0 !important; }
           .fomo-section-title { font-size: 12px !important; margin: 28px 0 14px !important; }
         }
@@ -953,8 +953,8 @@ export default function Dashboard() {
       <div className="fomo-header" style={{padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${C.cardBorder}`,background:C.bg,position:'sticky',top:0,zIndex:100}}>
         <div className="fomo-header-logo" style={{fontSize:'20px',fontWeight:800,letterSpacing:'-.5px',fontFamily:"'Syne',sans-serif"}}>FO<span style={{color:C.accent}}>MO</span></div>
         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-          {msg && <span style={{fontSize:'12px',color:C.green,fontFamily:'DM Mono,monospace',fontWeight:600}}>{msg}</span>}
-          <span style={{fontSize:'11px',color:C.label,background:C.card,padding:'6px 12px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,fontFamily:'DM Mono,monospace'}}>{fechaLabel()}</span>
+          {msg && <span style={{fontSize:'12px',color:C.green,fontFamily:'Inter, system-ui, sans-serif',fontWeight:600}}>{msg}</span>}
+          <span style={{fontSize:'11px',color:C.label,background:C.card,padding:'6px 12px',borderRadius:'8px',border:`1px solid ${C.cardBorder}`,fontFamily:'Inter, system-ui, sans-serif'}}>{fechaLabel()}</span>
           <button onClick={logout} style={{fontSize:'11px',color:C.label,background:'none',border:`1px solid ${C.cardBorder}`,borderRadius:'8px',padding:'6px 12px',cursor:'pointer',fontFamily:"'Syne',sans-serif",fontWeight:600}}>salir</button>
         </div>
       </div>
@@ -1025,12 +1025,12 @@ export default function Dashboard() {
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label}}>{r.label}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px'}}>{fmt(r.val)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px'}}>{fmt(r.val)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'12px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px'}}>
               <span>Total cobrado hoy</span>
-              <span style={{fontFamily:'monospace',color:C.green}}>{fmt(ventasHoy)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.green}}>{fmt(ventasHoy)}</span>
             </div>
           </div>
 
@@ -1044,17 +1044,17 @@ export default function Dashboard() {
             ].map((r,i) => (
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span>
               </div>
             ))}
             <div style={{...S.row,fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
               <span>TOTAL LÍQUIDO</span>
-              <span style={{fontFamily:'monospace',color:liquidoHoy>2e6?'#3ddc84':'#f5a623'}}>{fmt(liquidoHoy)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:liquidoHoy>2e6?'#3ddc84':'#f5a623'}}>{fmt(liquidoHoy)}</span>
             </div>
-            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(tv15)}</span></div>
+            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Vence próx. 15 días</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>−{fmt(tv15)}</span></div>
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'14px',background:'rgba(245,166,35,0.06)',margin:'4px -13px -13px',padding:'12px 13px',borderRadius:'0 0 12px 12px'}}>
               <span>Posición neta 15d</span>
-              <span style={{fontFamily:'monospace',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:posNeta>0?'#3ddc84':'#ff5050'}}>{fmt(posNeta)}</span>
             </div>
           </div>
 
@@ -1064,14 +1064,14 @@ export default function Dashboard() {
               {tarjetaAcumulada <= 0 ? (
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <span style={{fontSize:'13px',color:C.muted}}>Tarjeta — todo acreditado</span>
-                  <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>✓</span>
+                  <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',color:C.muted}}>✓</span>
                 </div>
               ) : (
                 <>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:tarjetaInputShow?'12px':'0'}}>
                     <div>
                       <div style={{fontSize:'12px',color:C.accent,fontWeight:700,marginBottom:'2px'}}>Tarjeta pendiente acreditación</div>
-                      <div style={{fontFamily:'monospace',fontSize:'16px',fontWeight:700,color:C.accent}}>{fmt(tarjetaAcumulada)}</div>
+                      <div style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'16px',fontWeight:700,color:C.accent}}>{fmt(tarjetaAcumulada)}</div>
                       <div style={{fontSize:'11px',color:C.muted}}>Acumulado de días sin acreditar</div>
                     </div>
                     {!tarjetaInputShow && (
@@ -1106,7 +1106,7 @@ export default function Dashboard() {
                   <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
                   <div style={{fontSize:'10px',color:C.muted,marginTop:'2px'}}>{h.usuario_nombre}</div>
                 </div>
-                <span style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</span>
+                <span style={{fontSize:'10px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</span>
               </div>
             ))}
             {historial.length === 0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'12px 0'}}>Sin cambios hoy</p>}
@@ -1119,7 +1119,7 @@ export default function Dashboard() {
         <div className="fomo-content" style={S.page}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'4px'}}>
             <div style={S.secVentas}>Datos del día</div>
-            <input type="date" style={{background:C.inputBg,border:`1px solid ${C.cardBorder}`,borderRadius:'10px',color:C.text,fontFamily:'DM Mono,monospace',fontSize:'13px',padding:'8px 12px',outline:'none',cursor:'pointer'}}
+            <input type="date" style={{background:C.inputBg,border:`1px solid ${C.cardBorder}`,borderRadius:'10px',color:C.text,fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',padding:'8px 12px',outline:'none',cursor:'pointer'}}
               value={fechaCarga}
               onChange={e => { setFechaCarga(e.target.value); cargarFecha(e.target.value) }}
             />
@@ -1144,7 +1144,7 @@ export default function Dashboard() {
                 placeholder="0"
                 onChange={e => setDatosDia({...datosDia, [f.key]: parseFloat(e.target.value.replace(/\./g,''))||0})}
               />
-              {f.hint && <p style={{fontSize:'10px',color:C.muted,marginTop:'5px',fontFamily:'monospace'}}>{f.hint}</p>}
+              {f.hint && <p style={{fontSize:'10px',color:C.muted,marginTop:'5px',fontFamily:'Inter, system-ui, sans-serif'}}>{f.hint}</p>}
             </div>
           ))}
 
@@ -1172,7 +1172,7 @@ export default function Dashboard() {
             ].map(f => (
               <div key={f.key} style={{marginBottom:'12px'}}>
                 <label style={S.label}>{f.label}</label>
-                {f.hint && <div style={{fontSize:'10px',color:C.muted,marginBottom:'4px',fontFamily:'monospace'}}>{f.hint}</div>}
+                {f.hint && <div style={{fontSize:'10px',color:C.muted,marginBottom:'4px',fontFamily:'Inter, system-ui, sans-serif'}}>{f.hint}</div>}
                 {f.tipo === 'select' ? (
                   <select style={S.sel} value={datosDia[f.key]||'efectivo'}
                     onChange={e => setDatosDia({...datosDia, [f.key]: e.target.value})}>
@@ -1189,10 +1189,10 @@ export default function Dashboard() {
             ))}
             <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontSize:'13px',color:C.label,fontWeight:600}}>Total del día</span>
-              <span style={{fontFamily:'DM Mono,monospace',fontSize:'16px',fontWeight:700,color:C.green}}>{fmt(totalVentasDia)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'16px',fontWeight:700,color:C.green}}>{fmt(totalVentasDia)}</span>
             </div>
             {(datosDia.ventas_695||0) === 0 && (datosDia.ventas_642||0) === 0 && (datosDia.ventas_sanjuan||0) > 0 && (
-              <p style={{fontSize:'10px',color:C.muted,marginTop:'8px',fontFamily:'monospace'}}>Ventas cargadas como San Juan (migración anterior)</p>
+              <p style={{fontSize:'10px',color:C.muted,marginTop:'8px',fontFamily:'Inter, system-ui, sans-serif'}}>Ventas cargadas como San Juan (migración anterior)</p>
             )}
           </div>
 
@@ -1202,7 +1202,7 @@ export default function Dashboard() {
               value={datosDia.notas||''} onChange={e => setDatosDia({...datosDia, notas:e.target.value})}/>
           </div>
           <div style={S.secAjuste}>Ajuste de caja</div>
-          <div style={{fontSize:'11px',color:C.muted,marginBottom:'8px',fontFamily:'monospace'}}>
+          <div style={{fontSize:'11px',color:C.muted,marginBottom:'8px',fontFamily:'Inter, system-ui, sans-serif'}}>
             ⚡ El ajuste siempre impacta en el día de HOY ({hoyStr().split('-').reverse().join('/')})
           </div>
           <div style={S.card}>
@@ -1343,7 +1343,7 @@ export default function Dashboard() {
               </div>
             </div>
             {fCambio.monto_original && fCambio.monto_recibido && parseFloat(fCambio.monto_original) > parseFloat(fCambio.monto_recibido) && (
-              <div style={{background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:'8px',padding:'9px 12px',marginBottom:'10px',fontSize:'12px',color:'#ff8080',fontFamily:'monospace'}}>
+              <div style={{background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:'8px',padding:'9px 12px',marginBottom:'10px',fontSize:'12px',color:'#ff8080',fontFamily:'Inter, system-ui, sans-serif'}}>
                 Descuento: {fmt(parseFloat(fCambio.monto_original) - parseFloat(fCambio.monto_recibido))} ({((1 - parseFloat(fCambio.monto_recibido)/parseFloat(fCambio.monto_original))*100).toFixed(1)}%)
               </div>
             )}
@@ -1364,9 +1364,9 @@ export default function Dashboard() {
                     <div>
                       <span style={{fontSize:'12px'}}>{g.descripcion} </span>
                       {tipoBadge(g.categoria)}
-                      <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace',marginTop:'2px'}}>{g.usuario_nombre}</div>
+                      <div style={{fontSize:'10px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',marginTop:'2px'}}>{g.usuario_nombre}</div>
                     </div>
-                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmt(g.monto)}</span>
+                    <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>{fmt(g.monto)}</span>
                   </div>
                 ))}
               </div>
@@ -1396,13 +1396,13 @@ export default function Dashboard() {
                     <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:C.text}}>{v.descripcion}</div>
                     <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
                       {tipoBadge(v.tipo)}
-                      <span style={{fontSize:'11px',color:C.muted,fontFamily:'monospace'}}>{v.fecha.split('-').reverse().join('/')}</span>
+                      <span style={{fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif'}}>{v.fecha.split('-').reverse().join('/')}</span>
                       <span style={{fontSize:'11px',color:C.muted}}>· {v.usuario_nombre||'sistema'}</span>
                     </div>
                   </div>
                   <div style={{textAlign:'right',flexShrink:0}}>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,marginBottom:'5px'}}>{fmt(v.monto)}</div>
-                    <span style={{fontSize:'10px',fontWeight:700,padding:'3px 8px',borderRadius:'6px',background:col+'22',color:col,fontFamily:'monospace'}}>{badge}</span>
+                    <div style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'15px',fontWeight:600,color:C.red,marginBottom:'5px'}}>{fmt(v.monto)}</div>
+                    <span style={{fontSize:'10px',fontWeight:700,padding:'3px 8px',borderRadius:'6px',background:col+'22',color:col,fontFamily:'Inter, system-ui, sans-serif'}}>{badge}</span>
                   </div>
                   <button style={{background:'rgba(52,211,153,0.1)',border:'1px solid rgba(52,211,153,0.3)',borderRadius:'8px',color:C.green,cursor:'pointer',fontSize:'14px',padding:'7px 12px',fontWeight:700,flexShrink:0}} onClick={()=>abrirModalPago(v)}>✓ Pagar</button>
                 </div>
@@ -1424,9 +1424,9 @@ export default function Dashboard() {
                     <div key={i} style={{padding:'12px 18px',borderBottom:i<vencPagados.length-1?`1px solid ${C.cardBorder}`:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <div>
                         <div style={{fontSize:'13px',color:C.muted}}>{v.descripcion}</div>
-                        <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>{v.fecha_pago||v.fecha}</div>
+                        <div style={{fontSize:'10px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif'}}>{v.fecha_pago||v.fecha}</div>
                       </div>
-                      <span style={{fontFamily:'monospace',fontSize:'13px',color:C.muted}}>{fmt(v.monto)}</span>
+                      <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',color:C.muted}}>{fmt(v.monto)}</span>
                     </div>
                   ))}
                 </div>
@@ -1443,9 +1443,9 @@ export default function Dashboard() {
                     <div style={{width:'4px',alignSelf:'stretch',borderRadius:'4px',background:'#fb923c',flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:'14px',fontWeight:600,marginBottom:'4px',color:'#fb923c'}}>⚠ {d.descripcion}</div>
-                      <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace'}}>sin fecha · {d.usuario_nombre}</div>
+                      <div style={{fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif'}}>sin fecha · {d.usuario_nombre}</div>
                     </div>
-                    <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:'#fb923c',flexShrink:0}}>{fmt(d.monto)}</span>
+                    <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'15px',fontWeight:600,color:'#fb923c',flexShrink:0}}>{fmt(d.monto)}</span>
                     <button style={{background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',color:'#4ade80',cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>pagarDeuda(d)}>$ Pagar</button>
                     <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
                   </div>
@@ -1469,7 +1469,7 @@ export default function Dashboard() {
                     <span style={{fontSize:'11px',color:C.muted}}>{d.usuario_nombre||'sistema'}</span>
                   </div>
                 </div>
-                <span style={{fontFamily:'DM Mono,monospace',fontSize:'15px',fontWeight:600,color:C.red,flexShrink:0}}>{fmt(d.monto)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'15px',fontWeight:600,color:C.red,flexShrink:0}}>{fmt(d.monto)}</span>
                 <button style={{background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',color:'#4ade80',cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>pagarDeuda(d)}>$ Pagar</button>
                 <button style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'8px',color:C.muted,cursor:'pointer',fontSize:'13px',padding:'7px 11px',flexShrink:0}} onClick={()=>eliminarItem('deudas',d.id,d.descripcion)}>✕</button>
               </div>
@@ -1479,7 +1479,7 @@ export default function Dashboard() {
           <div style={{...S.card,background:'rgba(248,113,113,0.06)',border:`1px solid rgba(248,113,113,0.2)`,marginTop:'4px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontSize:'14px',fontWeight:700,color:C.label}}>Total deuda registrada</span>
-              <span style={{fontFamily:'DM Mono,monospace',fontSize:'18px',fontWeight:800,color:C.red}}>{fmt(totalDeudas)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'18px',fontWeight:800,color:C.red}}>{fmt(totalDeudas)}</span>
             </div>
           </div>
         </div>
@@ -1509,11 +1509,11 @@ export default function Dashboard() {
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14}}>
                     <div>
                       <div style={{fontSize:11, color:C.muted, letterSpacing:'.06em', marginBottom:4}}>VENTAS NECESARIAS PARA NO PERDER</div>
-                      <div style={{fontSize:26, fontWeight:800, fontFamily:'monospace', color:C.text}}>{fmtS(pe)}</div>
+                      <div style={{fontSize:26, fontWeight:800, fontFamily:'Inter, system-ui, sans-serif', color:C.text}}>{fmtS(pe)}</div>
                     </div>
                     <div style={{textAlign:'right'}}>
                       <div style={{fontSize:11, color:C.muted, letterSpacing:'.06em', marginBottom:4}}>LLEVAS</div>
-                      <div style={{fontSize:26, fontWeight:800, fontFamily:'monospace', color:barColor}}>{pct}%</div>
+                      <div style={{fontSize:26, fontWeight:800, fontFamily:'Inter, system-ui, sans-serif', color:barColor}}>{pct}%</div>
                     </div>
                   </div>
                   {/* Barra */}
@@ -1530,7 +1530,7 @@ export default function Dashboard() {
                     ].map((r,i) => (
                       <div key={i} style={{background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'10px 12px'}}>
                         <div style={{fontSize:10, color:C.muted, marginBottom:4}}>{r.l}</div>
-                        <div style={{fontSize:13, fontWeight:700, fontFamily:'monospace', color:r.c}}>{r.v}</div>
+                        <div style={{fontSize:13, fontWeight:700, fontFamily:'Inter, system-ui, sans-serif', color:r.c}}>{r.v}</div>
                       </div>
                     ))}
                   </div>
@@ -1555,10 +1555,10 @@ export default function Dashboard() {
               {l:'CMV estimado (61.2%)', v:-cmv, c:'#ff5050'},
               {l:'Ganancia créditos (cobrado - costo)', v:gananciaCreditos, c:'#3ddc84'},
             ].map((r,i)=>(
-              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
+              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:r.c}}>{fmt(r.v)}</span></div>
             ))}
             <div style={{...S.row,fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
-              <span>Margen bruto</span><span style={{fontFamily:'monospace',color:mb>0?'#3ddc84':'#ff5050'}}>{fmt(mb)}</span>
+              <span>Margen bruto</span><span style={{fontFamily:'Inter, system-ui, sans-serif',color:mb>0?'#3ddc84':'#ff5050'}}>{fmt(mb)}</span>
             </div>
             {[
               {l:'Sueldos', v:-9340241},
@@ -1566,13 +1566,13 @@ export default function Dashboard() {
               {l:'Inversor (1.500 USD)', v:-2160000},
               {l:'Santander + ARCA + otros', v:-2628220},
             ].map((r,i)=>(
-              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmt(r.v)}</span></div>
+              <div key={i} style={S.row}><span style={{color:C.label,fontSize:'12px'}}>{r.l}</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>{fmt(r.v)}</span></div>
             ))}
             <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'14px',background:'rgba(245,166,35,0.06)',margin:'4px -13px -13px',padding:'12px 13px',borderRadius:'0 0 12px 12px'}}>
-              <span>Resultado neto est.</span><span style={{fontFamily:'monospace',color:neto>0?'#3ddc84':'#ff5050'}}>{fmt(neto)}</span>
+              <span>Resultado neto est.</span><span style={{fontFamily:'Inter, system-ui, sans-serif',color:neto>0?'#3ddc84':'#ff5050'}}>{fmt(neto)}</span>
             </div>
           </div>
-          <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',marginBottom:'16px',padding:'0 2px'}}>
+          <div style={{fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',marginBottom:'16px',padding:'0 2px'}}>
             ⚠ Proyección parcial — {diasConDatos} de {diasDelMes} días del mes con datos cargados. Los gastos fijos reflejan el mes completo.
           </div>
 
@@ -1586,7 +1586,7 @@ export default function Dashboard() {
             ].map((r,i)=>(
               <div key={i} style={{...S.row,...(i===3?{borderBottom:'none'}:{})}}>
                 <div><div style={{fontSize:'12px',marginBottom:'2px'}}>{r.cat}</div><div style={{fontSize:'10px',color:C.muted}}>{r.nota}</div></div>
-                <span style={{fontFamily:'monospace',fontSize:'13px',fontWeight:700,color:r.color}}>{r.pct}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',fontWeight:700,color:r.color}}>{r.pct}</span>
               </div>
             ))}
           </div>
@@ -1605,8 +1605,8 @@ export default function Dashboard() {
             ].map((r,i)=>(
               <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',padding:'9px 0',borderBottom:i<2?`1px solid ${C.cardBorder}`:'none'}}>
                 <span style={{fontSize:'12px',color:C.label}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',textAlign:'right',color:r.feb<0?C.red:C.green}}>{fmt(r.feb)}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',textAlign:'right',color:r.ene<0?C.red:C.green}}>{fmt(r.ene)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',textAlign:'right',color:r.feb<0?C.red:C.green}}>{fmt(r.feb)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',textAlign:'right',color:r.ene<0?C.red:C.green}}>{fmt(r.ene)}</span>
               </div>
             ))}
           </div>
@@ -1623,12 +1623,12 @@ export default function Dashboard() {
                       <div style={{fontSize:'12px'}}>{g.descripcion}</div>
                       <div style={{fontSize:'10px',color:C.muted}}>{g.categoria} · {g.fecha.split('-').reverse().join('/')}</div>
                     </div>
-                    <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(g.monto)}</span>
+                    <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>−{fmt(g.monto)}</span>
                   </div>
                 ))}
                 <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
                   <span>Total gastos mes</span>
-                  <span style={{fontFamily:'monospace',color:C.red}}>−{fmt(gastosMes.reduce((s,g)=>s+g.monto,0))}</span>
+                  <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.red}}>−{fmt(gastosMes.reduce((s,g)=>s+g.monto,0))}</span>
                 </div>
               </>
             )}
@@ -1638,12 +1638,12 @@ export default function Dashboard() {
           <div style={S.card}>
             {stock.map((s,i)=>(
               <div key={i} style={{...S.row,...(i===stock.length-1?{borderBottom:'none'}:{})}}>
-                <div><div style={{fontSize:'12px'}}>{s.descripcion||s.categoria}</div><div style={{fontSize:'10px',color:C.label,fontFamily:'monospace'}}>{s.cantidad} uds · {fmtS(s.costo_unitario)} c/u</div></div>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.blue}}>{fmtS(s.cantidad*s.costo_unitario)}</span>
+                <div><div style={{fontSize:'12px'}}>{s.descripcion||s.categoria}</div><div style={{fontSize:'10px',color:C.label,fontFamily:'Inter, system-ui, sans-serif'}}>{s.cantidad} uds · {fmtS(s.costo_unitario)} c/u</div></div>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.blue}}>{fmtS(s.cantidad*s.costo_unitario)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',borderTop:'1px solid rgba(255,255,255,0.13)',marginTop:'4px',paddingTop:'10px'}}>
-              <span>Stock total valorizado</span><span style={{fontFamily:'monospace',color:C.blue}}>{fmtS(stockValor)}</span>
+              <span>Stock total valorizado</span><span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.blue}}>{fmtS(stockValor)}</span>
             </div>
           </div>
 
@@ -1652,7 +1652,7 @@ export default function Dashboard() {
             {proveedores.map((p,i)=>(
               <div key={i} style={{...S.row,...(i===proveedores.length-1?{borderBottom:'none'}:{})}}>
                 <span style={{fontSize:'12px',color:C.label}}>{p.nombre}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>{fmtS(p.deuda_actual)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>{fmtS(p.deuda_actual)}</span>
               </div>
             ))}
           </div>
@@ -1671,12 +1671,12 @@ export default function Dashboard() {
             ].map((r,i)=>(
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.green}}>{fmt(r.v)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.green}}>{fmt(r.v)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
               <span>TOTAL ACTIVO</span>
-              <span style={{fontFamily:'monospace',color:C.green}}>{fmt(acumData.efectivo+acumData.transferencias+acumData.saldoBanco+acumData.cheque+stockValor)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.green}}>{fmt(acumData.efectivo+acumData.transferencias+acumData.saldoBanco+acumData.cheque+stockValor)}</span>
             </div>
           </div>
 
@@ -1690,12 +1690,12 @@ export default function Dashboard() {
             ].map((r,i)=>(
               <div key={i} style={S.row}>
                 <span style={{color:C.label,fontSize:'12px'}}>{r.l}</span>
-                <span style={{fontFamily:'monospace',fontSize:'12px',color:C.red}}>−{fmt(r.v)}</span>
+                <span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px',color:C.red}}>−{fmt(r.v)}</span>
               </div>
             ))}
             <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'13px',paddingTop:'10px',borderTop:`1px solid ${C.cardBorder}`,marginTop:'4px'}}>
               <span>TOTAL PASIVO</span>
-              <span style={{fontFamily:'monospace',color:C.red}}>−{fmt(deudas.reduce((s,d)=>s+(d.monto||0),0)+vencimientos.reduce((s,v)=>s+(v.monto||0),0)+proveedores.reduce((s,p)=>s+(p.deuda_actual||0),0))}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.red}}>−{fmt(deudas.reduce((s,d)=>s+(d.monto||0),0)+vencimientos.reduce((s,v)=>s+(v.monto||0),0)+proveedores.reduce((s,p)=>s+(p.deuda_actual||0),0))}</span>
             </div>
           </div>
 
@@ -1708,7 +1708,7 @@ export default function Dashboard() {
               <div style={{...S.card,border:`1px solid ${pn>=0?'rgba(61,220,132,0.3)':'rgba(255,80,80,0.3)'}`,background:pn>=0?'rgba(61,220,132,0.05)':'rgba(255,80,80,0.05)'}}>
                 <div style={{...S.row,borderBottom:'none',fontWeight:700,fontSize:'14px'}}>
                   <span>PATRIMONIO NETO</span>
-                  <span style={{fontFamily:'monospace',color:pn>=0?C.green:C.red}}>{fmt(pn)}</span>
+                  <span style={{fontFamily:'Inter, system-ui, sans-serif',color:pn>=0?C.green:C.red}}>{fmt(pn)}</span>
                 </div>
               </div>
             )
@@ -1724,21 +1724,21 @@ export default function Dashboard() {
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
                 <div style={{fontSize:'11px',color:C.muted,textTransform:'uppercase',fontWeight:700,letterSpacing:'.08em',marginBottom:'4px'}}>Caja de arranque</div>
-                <div style={{fontFamily:'DM Mono,monospace',fontSize:'22px',fontWeight:800,color:C.blue}}>{fmt(liquidoHoy)}</div>
+                <div style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'22px',fontWeight:800,color:C.blue}}>{fmt(liquidoHoy)}</div>
               </div>
               <div style={{textAlign:'right'}}>
                 <div style={{fontSize:'11px',color:C.muted,marginBottom:'4px'}}>Estimado diario</div>
-                <div style={{fontFamily:'monospace',fontSize:'15px',color:C.accent}}>{fmt(FLUJO_DEFAULT)}</div>
-                <div style={{fontSize:'10px',color:C.muted,fontFamily:'monospace'}}>valor por defecto</div>
+                <div style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'15px',color:C.accent}}>{fmt(FLUJO_DEFAULT)}</div>
+                <div style={{fontSize:'10px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif'}}>valor por defecto</div>
               </div>
             </div>
           </div>
 
-          <div style={{background:'rgba(245,166,35,0.06)',border:'1px solid rgba(245,166,35,0.2)',borderRadius:'12px',padding:'10px 14px',marginBottom:'14px',fontSize:'11px',color:C.muted,fontFamily:'monospace',lineHeight:1.6}}>
+          <div style={{background:'rgba(245,166,35,0.06)',border:'1px solid rgba(245,166,35,0.2)',borderRadius:'12px',padding:'10px 14px',marginBottom:'14px',fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',lineHeight:1.6}}>
             ℹ Las entradas usan {fmt(FLUJO_DEFAULT)}/día como estimado. Los días pasados muestran ventas reales si fueron cargadas.
           </div>
           <div style={{overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'DM Mono,monospace',fontSize:'12px'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'Inter, system-ui, sans-serif',fontSize:'12px'}}>
               <thead>
                 <tr style={{borderBottom:`1px solid ${C.cardBorder}`}}>
                   {['Fecha','Entradas est.','Salidas prog.','Neto del día','Acumulado'].map((h,i)=>(
@@ -1774,7 +1774,7 @@ export default function Dashboard() {
                 })}
                 {deudas.filter(d=>d.tipo==='impago').map((d,i)=>(
                   <tr key={`deuda-${i}`} style={{borderBottom:`1px solid rgba(251,146,60,0.2)`,background:'rgba(251,146,60,0.06)'}}>
-                    <td colSpan={5} style={{padding:'9px 8px',color:'#fb923c',fontFamily:'DM Mono,monospace',fontSize:'11px',fontWeight:600}}>
+                    <td colSpan={5} style={{padding:'9px 8px',color:'#fb923c',fontFamily:'Inter, system-ui, sans-serif',fontSize:'11px',fontWeight:600}}>
                       ⚠ DEUDA PENDIENTE: {d.descripcion} — {fmt(d.monto)} (sin fecha)
                     </td>
                   </tr>
@@ -1786,18 +1786,18 @@ export default function Dashboard() {
           <div style={{...S.card,marginTop:'16px'}}>
             <div style={{...S.row}}>
               <span style={{color:C.label,fontSize:'13px'}}>Saldo proyectado en 30 días</span>
-              <span style={{fontFamily:'monospace',fontWeight:700,fontSize:'14px',color:(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)>0?C.green:C.red}}>{fmt(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',fontWeight:700,fontSize:'14px',color:(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)>0?C.green:C.red}}>{fmt(tablaFlujo[tablaFlujo.length-1]?.acumulado||0)}</span>
             </div>
             <div style={{...S.row}}>
               <span style={{color:C.red,fontSize:'12px'}}>Días en rojo</span>
-              <span style={{fontFamily:'monospace',color:C.red,fontWeight:700}}>{diasRojo}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.red,fontWeight:700}}>{diasRojo}</span>
             </div>
             <div style={{...S.row,borderBottom:'none'}}>
               <span style={{color:C.accent,fontSize:'12px'}}>Días en amarillo</span>
-              <span style={{fontFamily:'monospace',color:C.accent,fontWeight:700}}>{diasAmarillo}</span>
+              <span style={{fontFamily:'Inter, system-ui, sans-serif',color:C.accent,fontWeight:700}}>{diasAmarillo}</span>
             </div>
           </div>
-          <div style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',marginTop:'10px',padding:'11px 14px',background:C.card,borderRadius:'12px',border:`1px solid ${C.cardBorder}`,lineHeight:2}}>
+          <div style={{fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',marginTop:'10px',padding:'11px 14px',background:C.card,borderRadius:'12px',border:`1px solid ${C.cardBorder}`,lineHeight:2}}>
             <span style={{color:C.green}}>●</span> Verde = acumulado {'>'} $1.000.000&nbsp;&nbsp;
             <span style={{color:C.accent}}>●</span> Amarillo = acumulado entre $0 y $1.000.000&nbsp;&nbsp;
             <span style={{color:C.red}}>●</span> Rojo = acumulado negativo
@@ -1815,7 +1815,7 @@ export default function Dashboard() {
                 style={{fontSize:'10px',fontWeight:700,padding:'4px 10px',borderRadius:'6px',border:'none',cursor:'pointer',
                   background: filtroLog===f ? '#f5a623' : 'rgba(255,255,255,0.08)',
                   color: filtroLog===f ? '#000' : C.muted,
-                  fontFamily:'monospace'
+                  fontFamily:'Inter, system-ui, sans-serif'
                 }}>
                 {f==='todos'?'TODOS':f==='UPDATE'?'EDITS':f==='INSERT'?'NUEVOS':'BAJAS'}
               </button>
@@ -1847,12 +1847,12 @@ export default function Dashboard() {
                   <div key={i} style={{...S.row,...(i===arr.length-1?{borderBottom:'none'}:{}),alignItems:'flex-start',gap:'10px'}}>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
-                        <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',background:badgeColor+'22',color:badgeColor,flexShrink:0}}>{badgeLabel}</span>
+                        <span style={{fontSize:'9px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',fontFamily:'Inter, system-ui, sans-serif',background:badgeColor+'22',color:badgeColor,flexShrink:0}}>{badgeLabel}</span>
                         <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre}</span>
                       </div>
                       <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
                     </div>
-                    <span style={{fontSize:'9px',color:C.muted,fontFamily:'monospace',flexShrink:0,textAlign:'right',lineHeight:1.4}}>
+                    <span style={{fontSize:'9px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',flexShrink:0,textAlign:'right',lineHeight:1.4}}>
                       {new Date(h.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}<br/>
                       {new Date(h.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}
                     </span>
@@ -1880,7 +1880,7 @@ export default function Dashboard() {
                   <span style={{fontSize:'11px',color:C.accent,fontWeight:600}}>{h.usuario_nombre} </span>
                   <span style={{fontSize:'11px',color:C.label}}>{h.descripcion}</span>
                 </div>
-                <span style={{fontSize:'9px',color:C.muted,fontFamily:'monospace',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                <span style={{fontSize:'9px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',flexShrink:0,marginLeft:'8px'}}>{new Date(h.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
               </div>
             ))}
             {historial.length===0 && <p style={{fontSize:'12px',color:C.muted,textAlign:'center',padding:'12px 0'}}>Sin historial</p>}
@@ -1888,8 +1888,8 @@ export default function Dashboard() {
 
           <div style={S.sec}>Mi cuenta</div>
           <div style={S.card}>
-            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Usuario</span><span style={{fontSize:'12px',fontFamily:'monospace',color:C.accent}}>{usuario?.nombre}</span></div>
-            <div style={{...S.row,borderBottom:'none'}}><span style={{color:C.label,fontSize:'12px'}}>Rol</span><span style={{fontSize:'11px',fontFamily:'monospace',background:'rgba(91,159,255,0.15)',color:C.blue,padding:'2px 8px',borderRadius:'4px'}}>{usuario?.rol}</span></div>
+            <div style={S.row}><span style={{color:C.label,fontSize:'12px'}}>Usuario</span><span style={{fontSize:'12px',fontFamily:'Inter, system-ui, sans-serif',color:C.accent}}>{usuario?.nombre}</span></div>
+            <div style={{...S.row,borderBottom:'none'}}><span style={{color:C.label,fontSize:'12px'}}>Rol</span><span style={{fontSize:'11px',fontFamily:'Inter, system-ui, sans-serif',background:'rgba(91,159,255,0.15)',color:C.blue,padding:'2px 8px',borderRadius:'4px'}}>{usuario?.rol}</span></div>
           </div>
 
           <button style={{...S.btn,background:'transparent',border:'1px solid rgba(255,80,80,0.3)',color:C.red,marginTop:'8px'}} onClick={logout}>
@@ -1990,11 +1990,11 @@ export default function Dashboard() {
             <div style={{marginBottom:'16px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                 <h3 style={{fontSize:'15px',fontWeight:700,color:C.text,margin:0}}>Registrar pago</h3>
-                <span style={{fontSize:'11px',color:C.muted,fontFamily:'monospace',background:C.inputBg,padding:'3px 8px',borderRadius:'6px'}}>
+                <span style={{fontSize:'11px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',background:C.inputBg,padding:'3px 8px',borderRadius:'6px'}}>
                   {modalPago.paso === 1 ? 'Paso 1 — Tipo' : 'Paso 2 — Medio'}
                 </span>
               </div>
-              <p style={{fontSize:'12px',color:C.muted,marginTop:'4px',fontFamily:'monospace'}}>{modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}</p>
+              <p style={{fontSize:'12px',color:C.muted,marginTop:'4px',fontFamily:'Inter, system-ui, sans-serif'}}>{modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}</p>
             </div>
 
             {/* PASO 1: selector tipo */}
@@ -2075,7 +2075,7 @@ export default function Dashboard() {
             {/* PASO 1: no pude pagar — elegir sub-opción */}
             {modalPago.paso === 1 && modalPago.opcion === 'nopago' && !modalPago.subopcionD && (
               <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                <p style={{fontSize:'12px',color:C.muted,fontFamily:'monospace',marginBottom:'4px'}}>¿Qué querés hacer con este vencimiento?</p>
+                <p style={{fontSize:'12px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',marginBottom:'4px'}}>¿Qué querés hacer con este vencimiento?</p>
                 <button onClick={()=>setModalPago({...modalPago,subopcionD:'interes'})}
                   style={{background:'rgba(245,166,35,0.08)',border:'1px solid rgba(245,166,35,0.3)',borderRadius:'12px',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
                   <div style={{fontSize:'14px',fontWeight:700,color:C.accent,marginBottom:'2px'}}>Redefinir con interés</div>
@@ -2104,7 +2104,7 @@ export default function Dashboard() {
                     onChange={e=>setModalPago({...modalPago,interesInput:e.target.value.replace(/[^\d.]/g,'')})}/>
                 </div>
                 {parseFloat(modalPago.interesInput||0) > 0 && (
-                  <div style={{background:C.inputBg,borderRadius:'8px',padding:'10px 12px',marginBottom:'12px',fontSize:'12px',fontFamily:'monospace',color:C.accent}}>
+                  <div style={{background:C.inputBg,borderRadius:'8px',padding:'10px 12px',marginBottom:'12px',fontSize:'12px',fontFamily:'Inter, system-ui, sans-serif',color:C.accent}}>
                     Nuevo monto: {fmt(Math.round(modalPago.venc.monto * (1 + parseFloat(modalPago.interesInput||0)/100)))}
                     {' '}({fmt(modalPago.venc.monto)} + {modalPago.interesInput}%)
                   </div>
@@ -2119,7 +2119,7 @@ export default function Dashboard() {
             {/* PASO 1: D2 — pasar a deuda */}
             {modalPago.paso === 1 && modalPago.opcion === 'nopago' && modalPago.subopcionD === 'deuda' && (
               <div>
-                <div style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'10px',padding:'12px 14px',marginBottom:'12px',fontSize:'12px',color:C.red,fontFamily:'monospace'}}>
+                <div style={{background:'rgba(248,113,113,0.08)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:'10px',padding:'12px 14px',marginBottom:'12px',fontSize:'12px',color:C.red,fontFamily:'Inter, system-ui, sans-serif'}}>
                   {modalPago.venc.descripcion} — {fmt(modalPago.venc.monto)}<br/>
                   <span style={{color:C.muted}}>Se eliminará de vencimientos y aparecerá como deuda impaga sin fecha.</span>
                 </div>
@@ -2139,7 +2139,7 @@ export default function Dashboard() {
             {/* PASO 2: selector medio de pago */}
             {modalPago.paso === 2 && !modalPago.medio && (
               <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                <p style={{fontSize:'12px',color:C.muted,fontFamily:'monospace',marginBottom:'4px'}}>¿Cómo pagás {fmt(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto)}?</p>
+                <p style={{fontSize:'12px',color:C.muted,fontFamily:'Inter, system-ui, sans-serif',marginBottom:'4px'}}>¿Cómo pagás {fmt(parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto)}?</p>
                 {[
                   {id:'efectivo',label:'Efectivo',desc:'Descuenta del efectivo de hoy',icon:'💵'},
                   {id:'transferencia',label:'Transferencia',desc:'Descuenta de las transferencias de hoy',icon:'📲'},
@@ -2225,7 +2225,7 @@ export default function Dashboard() {
                   const esperado = parseFloat(String(modalPago.montoInput).replace(/\./g,''))||modalPago.venc.monto
                   const diff = totalChq - esperado
                   return totalChq > 0 && (
-                    <div style={{fontSize:'11px',fontFamily:'monospace',padding:'8px 12px',borderRadius:'8px',marginBottom:'12px',
+                    <div style={{fontSize:'11px',fontFamily:'Inter, system-ui, sans-serif',padding:'8px 12px',borderRadius:'8px',marginBottom:'12px',
                       background:Math.abs(diff)<1?'rgba(52,211,153,0.1)':'rgba(245,166,35,0.1)',
                       color:Math.abs(diff)<1?C.green:C.accent}}>
                       Total cheques: {fmt(totalChq)} / Esperado: {fmt(esperado)}
@@ -2262,7 +2262,7 @@ export default function Dashboard() {
                   const cuota = Math.round(total / modalPago.cuotas)
                   const [hy,hm,hd] = hoyStr().split('-').map(Number)
                   return (
-                    <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px',marginBottom:'16px',fontSize:'12px',fontFamily:'monospace'}}>
+                    <div style={{background:C.inputBg,borderRadius:'10px',padding:'12px',marginBottom:'16px',fontSize:'12px',fontFamily:'Inter, system-ui, sans-serif'}}>
                       {modalPago.cuotas===1 ? (
                         <div style={{color:C.green}}>Pago único — sin vencimientos futuros</div>
                       ) : (
@@ -2298,7 +2298,7 @@ export default function Dashboard() {
                 {l:'Transferencias acumuladas', v:acumData.transferencias, c:'#3ddc84'},
                 {l:'Saldo banco', v:acumData.saldoBanco, c:'#3ddc84'},
               ].map((r,i)=>(
-                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span></div>
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',color:r.c}}>{r.v<0?'−'+fmt(-r.v):fmt(r.v)}</span></div>
               ))}
             </>}
             {modalDetalle.tipo==='ventas' && <>
@@ -2311,7 +2311,7 @@ export default function Dashboard() {
                 {l:'Créditos (cobrado)', v:datosHoy.ventas_creditos||0},
                 {l:'Créditos (costo)', v:-(datosHoy.costo_creditos||0), color:C.red},
               ].map((r,i)=>(
-                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px',color:r.color||undefined}}>{fmt(Math.abs(r.v))}{r.v<0?' (costo)':''}</span></div>
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',color:r.color||undefined}}>{fmt(Math.abs(r.v))}{r.v<0?' (costo)':''}</span></div>
               ))}
             </>}
             {modalDetalle.tipo==='mes' && <>
@@ -2323,14 +2323,14 @@ export default function Dashboard() {
                   {l:'Sucursal 642', v:(historialDias||[]).filter(r=>r.fecha?.startsWith(mesStr)).reduce((s,r)=>s+(r.ventas_642||0),0)},
                   {l:'San Juan', v:(historialDias||[]).filter(r=>r.fecha?.startsWith(mesStr)).reduce((s,r)=>s+(r.ventas_sanjuan||0),0)},
                 ].map((r,i)=>(
-                  <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'monospace',fontSize:'13px'}}>{fmt(r.v)}</span></div>
+                  <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{r.l}</span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px'}}>{fmt(r.v)}</span></div>
                 ))
               })()}
             </>}
             {modalDetalle.tipo==='vence7' && <>
               <div style={{fontWeight:700,fontSize:'14px',marginBottom:'16px',fontFamily:"'Syne',sans-serif"}}>Vencimientos próximos 7 días</div>
               {v7.map((v,i)=>(
-                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{v.descripcion} <span style={{color:C.muted,fontSize:'11px'}}>{v.fecha.split('-').reverse().join('/')}</span></span><span style={{fontFamily:'monospace',fontSize:'13px',color:C.red}}>{fmt(v.monto)}</span></div>
+                <div key={i} style={S.row}><span style={{color:C.label,fontSize:'13px'}}>{v.descripcion} <span style={{color:C.muted,fontSize:'11px'}}>{v.fecha.split('-').reverse().join('/')}</span></span><span style={{fontFamily:'Inter, system-ui, sans-serif',fontSize:'13px',color:C.red}}>{fmt(v.monto)}</span></div>
               ))}
               {v7.length===0 && <p style={{color:C.muted,fontSize:'13px',textAlign:'center',padding:'12px 0'}}>Sin vencimientos</p>}
             </>}

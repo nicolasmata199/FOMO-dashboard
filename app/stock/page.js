@@ -464,7 +464,7 @@ export default function StockPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', color: C.text, fontFamily: "'DM Mono', monospace" }}>
+    <div style={{ background: C.bg, minHeight: '100vh', color: C.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
 
       {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -988,14 +988,14 @@ const inp = {
   width: '100%', boxSizing: 'border-box',
   background: '#21262d', border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 8, padding: '10px 12px', color: '#f0f6fc',
-  fontSize: 14, outline: 'none', fontFamily: "'DM Mono', monospace",
+  fontSize: 14, outline: 'none', fontFamily: "'Inter', system-ui, sans-serif",
 }
 
 const cellInp = {
   width: '100%', boxSizing: 'border-box',
   background: 'transparent', border: '1px solid transparent',
   borderRadius: 5, padding: '7px 6px', color: '#f0f6fc',
-  fontSize: 13, outline: 'none', fontFamily: "'DM Mono', monospace",
+  fontSize: 13, outline: 'none', fontFamily: "'Inter', system-ui, sans-serif",
   transition: 'border-color .15s',
   onFocus: undefined,
 }

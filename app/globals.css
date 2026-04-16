@@ -1,4 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; }
 html { font-size: 16px; }
-body { margin: 0; font-size: 16px; }
+body { margin: 0; font-size: 16px; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 input, button, select, textarea { font-size: inherit; }

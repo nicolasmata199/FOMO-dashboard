@@ -209,7 +209,7 @@ export default function VentasDashboard() {
 
   const estiloTab = (t) => ({
     padding: '10px 24px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 600,
+    fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, fontWeight: 600,
     background: tab === t ? C.accent : C.bg3,
     color: tab === t ? '#000' : C.text2
   })
@@ -217,13 +217,13 @@ export default function VentasDashboard() {
   const inputStyle = {
     width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8,
     padding: '10px 12px', color: C.text, fontSize: 15, outline: 'none',
-    fontFamily: "'DM Mono', monospace", boxSizing: 'border-box'
+    fontFamily: "'Inter', system-ui, sans-serif", boxSizing: 'border-box'
   }
 
   if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', padding:'20px 16px', color:C.text, fontFamily:"'DM Mono', monospace", maxWidth:1200, margin:'0 auto' }}>
+    <div style={{ background:C.bg, minHeight:'100vh', padding:'20px 16px', color:C.text, fontFamily:"'Inter', system-ui, sans-serif", maxWidth:1200, margin:'0 auto' }}>
 
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
@@ -246,7 +246,7 @@ export default function VentasDashboard() {
       <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
         style={{ width:'100%', background:C.bg3, border:`1px solid ${C.border}`, borderRadius:8,
           padding:'10px 12px', color:C.text, fontSize:14, marginBottom:16, outline:'none',
-          fontFamily:"'DM Mono', monospace" }}
+          fontFamily:"'Inter', system-ui, sans-serif" }}
       />
 
       {/* Tabs */}
@@ -405,14 +405,14 @@ export default function VentasDashboard() {
                         <button
                           onClick={() => abrirEditar(v)}
                           style={{ flex:1, padding:'11px', background:C.blue+'22', border:`1px solid ${C.blue}44`, borderRadius:8,
-                            color:C.blue, fontSize:14, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                            color:C.blue, fontSize:14, cursor:'pointer', fontFamily:"'Inter', system-ui, sans-serif" }}
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => setModalAnular(v)}
                           style={{ flex:1, padding:'11px', background:C.red+'22', border:`1px solid ${C.red}44`, borderRadius:8,
-                            color:C.red, fontSize:14, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                            color:C.red, fontSize:14, cursor:'pointer', fontFamily:"'Inter', system-ui, sans-serif" }}
                         >
                           Anular
                         </button>
@@ -500,7 +500,7 @@ export default function VentasDashboard() {
                 onClick={() => setModalAnular(null)}
                 disabled={procesando}
                 style={{ flex:1, padding:'10px', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8,
-                  color:C.text, fontSize:13, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                  color:C.text, fontSize:13, cursor:'pointer', fontFamily:"'Inter', system-ui, sans-serif" }}
               >
                 Cancelar
               </button>
@@ -508,7 +508,7 @@ export default function VentasDashboard() {
                 onClick={anularVenta}
                 disabled={procesando}
                 style={{ flex:1, padding:'10px', background:C.red, border:'none', borderRadius:8,
-                  color:'#fff', fontSize:13, cursor:'pointer', fontWeight:700, fontFamily:"'DM Mono', monospace" }}
+                  color:'#fff', fontSize:13, cursor:'pointer', fontWeight:700, fontFamily:"'Inter', system-ui, sans-serif" }}
               >
                 {procesando ? 'Anulando...' : 'Anular venta'}
               </button>
@@ -564,7 +564,7 @@ export default function VentasDashboard() {
                 onClick={() => setModalEditar(null)}
                 disabled={procesando}
                 style={{ flex:1, padding:'10px', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8,
-                  color:C.text, fontSize:13, cursor:'pointer', fontFamily:"'DM Mono', monospace" }}
+                  color:C.text, fontSize:13, cursor:'pointer', fontFamily:"'Inter', system-ui, sans-serif" }}
               >
                 Cancelar
               </button>
@@ -572,7 +572,7 @@ export default function VentasDashboard() {
                 onClick={editarVenta}
                 disabled={procesando}
                 style={{ flex:1, padding:'10px', background:C.accent, border:'none', borderRadius:8,
-                  color:'#000', fontSize:13, cursor:'pointer', fontWeight:700, fontFamily:"'DM Mono', monospace" }}
+                  color:'#000', fontSize:13, cursor:'pointer', fontWeight:700, fontFamily:"'Inter', system-ui, sans-serif" }}
               >
                 {procesando ? 'Guardando...' : 'Guardar'}
               </button>

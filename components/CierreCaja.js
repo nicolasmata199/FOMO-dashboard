@@ -154,7 +154,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                     <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
                       {fp?.icon} {fp?.label || forma}
                     </span>
-                    <span style={{ textAlign: 'right', fontSize: 13, color: C.text2, fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ textAlign: 'right', fontSize: 13, color: C.text2, fontFamily: "'Inter', system-ui, sans-serif" }}>
                       {formatARS(esp)}
                     </span>
                     <input
@@ -167,7 +167,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                         background: C.bg4, border: `1px solid ${C.border}`,
                         borderRadius: 6, padding: '6px 8px', color: C.text,
                         fontSize: 13, outline: 'none',
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'Inter', system-ui, sans-serif",
                         textAlign: 'right', width: '100%', boxSizing: 'border-box',
                       }}
                     />
@@ -177,7 +177,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                     <div style={{
                       textAlign: 'right', fontSize: 11, marginTop: 5,
                       color: diff === 0 ? C.green : Math.abs(diff) <= 100 ? C.accent : C.red,
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "'Inter', system-ui, sans-serif",
                     }}>
                       {diff > 0 ? '+' : ''}{formatARS(diff)}
                     </div>
@@ -193,7 +193,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
               marginTop: 4, marginBottom: 20,
             }}>
               <span style={{ fontWeight: 700, color: C.text }}>Total del día</span>
-              <span style={{ color: C.accent, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
+              <span style={{ color: C.accent, fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif" }}>
                 {formatARS(totalEsperado)}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
                   return (
                     <div key={forma} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                       <span style={{ color: C.text2 }}>{fp?.label || forma}</span>
-                      <span style={{ color: diff > 0 ? C.green : C.red, fontFamily: "'DM Mono', monospace" }}>
+                      <span style={{ color: diff > 0 ? C.green : C.red, fontFamily: "'Inter', system-ui, sans-serif" }}>
                         {diff > 0 ? '+' : ''}{formatARS(diff)}
                       </span>
                     </div>
@@ -237,7 +237,7 @@ export default function CierreCaja({ open, onClose, vendedora }) {
               fontSize: 15, fontWeight: 700,
               cursor: (saving || Object.keys(esperado).length === 0) ? 'not-allowed' : 'pointer',
               opacity: (saving || Object.keys(esperado).length === 0) ? 0.45 : 1,
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: "'Inter', system-ui, sans-serif",
             }}
           >
             {saving ? 'Guardando...' : 'Confirmar Cierre'}

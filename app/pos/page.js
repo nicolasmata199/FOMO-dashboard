@@ -118,7 +118,7 @@ function TextInput({ value, onChange, placeholder, type = 'text', autoFocus, ali
         background: C.bg3, border: `1px solid ${C.border}`,
         borderRadius: 8, padding: '12px 14px',
         color: C.text, fontSize: 15, outline: 'none',
-        fontFamily: "'DM Mono', monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
         textAlign: align || 'left',
       }}
     />
@@ -138,7 +138,7 @@ function Btn({ children, onClick, variant = 'primary', disabled }) {
         ...vs[variant],
         width: '100%', borderRadius: 8, padding: '13px 20px',
         fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.45 : 1, fontFamily: "'DM Mono', monospace",
+        opacity: disabled ? 0.45 : 1, fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
       {children}
@@ -176,7 +176,7 @@ function SmallBtn({ children, onClick, danger }) {
         borderRadius: 6, width: 36, height: 36, cursor: 'pointer',
         color: danger ? C.red : C.text, fontSize: 16,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'DM Mono', monospace", flexShrink: 0,
+        fontFamily: "'Inter', system-ui, sans-serif", flexShrink: 0,
       }}
     >
       {children}
@@ -410,7 +410,7 @@ export default function POSPage() {
   const abrirCierre = () => setCierreOpen(true)
 
   // ─────────────────────────────────────────────────────────────────────────
-  const pg = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'DM Mono', monospace", padding: 16, maxWidth: 1200, margin: '0 auto', paddingBottom: 48 }
+  const pg = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", padding: 16, maxWidth: 1200, margin: '0 auto', paddingBottom: 48 }
 
   if (checkingAuth) return <div style={{ background:'#030712', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#FFD700', fontFamily:"'Syne',sans-serif", fontSize:18 }}>Cargando...</div>
 
@@ -459,10 +459,10 @@ export default function POSPage() {
               <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, fontFamily: "'Syne', sans-serif" }}>¿Quién atiende hoy?</div>
               {usuario?.rol !== 'vendedora' && (
                 <div style={{ marginBottom: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                  <a href="/pos/ventas" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif", textDecoration: 'none', fontWeight: 600 }}>
                     📊 Ver ventas
                   </a>
-                  <a href="/stock" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'DM Mono', monospace", textDecoration: 'none', fontWeight: 600 }}>
+                  <a href="/stock" style={{ background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.accent, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif", textDecoration: 'none', fontWeight: 600 }}>
                     📦 Stock
                   </a>
                 </div>
@@ -476,7 +476,7 @@ export default function POSPage() {
                       background: C.bg3, border: `1px solid ${C.border}`,
                       borderRadius: 12, padding: '22px 12px',
                       color: C.text, cursor: 'pointer', textAlign: 'center',
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "'Inter', system-ui, sans-serif",
                     }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
@@ -514,7 +514,7 @@ export default function POSPage() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setVendedoraTemp(null)} style={{ marginTop: 16, background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
+              <button onClick={() => setVendedoraTemp(null)} style={{ marginTop: 16, background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>
                 ← Volver
               </button>
             </div>
@@ -547,7 +547,7 @@ export default function POSPage() {
                   No encontrado.{' '}
                   <button
                     onClick={() => { setModoCrear(true); setNuevoC({ dni: /^\d+$/.test(busCliente) ? busCliente : '', nombre: '', apellido: '', celular: '' }) }}
-                    style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontWeight: 700, fontFamily: "'DM Mono', monospace", fontSize: 13 }}
+                    style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13 }}
                   >
                     + Crear cliente
                   </button>
@@ -555,7 +555,7 @@ export default function POSPage() {
               )}
 
               <div style={{ textAlign: 'center', marginTop: 20 }}>
-                <button onClick={() => { setCliente(null); setPaso(2) }} style={{ background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontFamily: "'DM Mono', monospace", fontSize: 13, textDecoration: 'underline' }}>
+                <button onClick={() => { setCliente(null); setPaso(2) }} style={{ background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, textDecoration: 'underline' }}>
                   Continuar sin cliente
                 </button>
               </div>
@@ -668,7 +668,7 @@ export default function POSPage() {
                 <select
                   value={pagos[0]?.forma || 'efectivo_ars'}
                   onChange={e => setPagoField(pagos[0].id, 'forma', e.target.value)}
-                  style={{ width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: "'DM Mono', monospace", fontSize: 14, outline: 'none' }}
+                  style={{ width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, outline: 'none' }}
                 >
                   {FORMAS_PAGO.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
                 </select>
@@ -733,13 +733,13 @@ export default function POSPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Label>Forma de pago {idx + 1}</Label>
                 {pagos.length > 1 && (
-                  <button onClick={() => removePago(p.id)} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Quitar</button>
+                  <button onClick={() => removePago(p.id)} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 12, fontFamily: "'Inter', system-ui, sans-serif" }}>Quitar</button>
                 )}
               </div>
               <select
                 value={p.forma}
                 onChange={e => setPagoField(p.id, 'forma', e.target.value)}
-                style={{ width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: "'DM Mono', monospace", fontSize: 14, marginBottom: 8, outline: 'none' }}
+                style={{ width: '100%', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, marginBottom: 8, outline: 'none' }}
               >
                 {FORMAS_PAGO.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
               </select>
@@ -772,7 +772,7 @@ export default function POSPage() {
                 placeholder={p.forma === 'usd_billete' ? 'Monto en USD' : 'Monto en ARS'}
                 value={p.monto}
                 onChange={e => setPagoField(p.id, 'monto', e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 15, outline: 'none', fontFamily: "'DM Mono', monospace" }}
+                style={{ width: '100%', boxSizing: 'border-box', background: C.bg4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 15, outline: 'none', fontFamily: "'Inter', system-ui, sans-serif" }}
               />
               {p.forma === 'usd_billete' && cotizacion?.usd_blue && (parseFloat(p.monto) || 0) > 0 && (
                 <div style={{ fontSize: 12, color: C.text2, marginTop: 5 }}>
@@ -802,7 +802,7 @@ export default function POSPage() {
           ))}
 
           {pagos.length < 5 && (
-            <button onClick={addPago} style={{ width: '100%', background: 'transparent', border: `1px dashed ${C.border}`, borderRadius: 10, padding: 12, color: C.text2, cursor: 'pointer', fontFamily: "'DM Mono', monospace", fontSize: 13, marginBottom: 16 }}>
+            <button onClick={addPago} style={{ width: '100%', background: 'transparent', border: `1px dashed ${C.border}`, borderRadius: 10, padding: 12, color: C.text2, cursor: 'pointer', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, marginBottom: 16 }}>
               + Agregar forma de pago ({5 - pagos.length} disponibles)
             </button>
           )}
@@ -858,7 +858,7 @@ export default function POSPage() {
           </div>
 
           <Btn onClick={nuevaVenta}>+ Nueva venta</Btn>
-          <button onClick={cambiarVendedora} style={{ marginTop: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 20px', color: C.text2, fontSize: 13, cursor: 'pointer', width: '100%', fontFamily: "'DM Mono', monospace" }}>
+          <button onClick={cambiarVendedora} style={{ marginTop: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 20px', color: C.text2, fontSize: 13, cursor: 'pointer', width: '100%', fontFamily: "'Inter', system-ui, sans-serif" }}>
             Cambiar vendedora
           </button>
         </div>
@@ -881,12 +881,12 @@ const ghostBtn = {
   border: `1px solid rgba(255,255,255,0.08)`,
   borderRadius: 8, padding: '8px 12px',
   color: '#8b949e', cursor: 'pointer',
-  fontSize: 12, fontFamily: "'DM Mono', monospace",
+  fontSize: 12, fontFamily: "'Inter', system-ui, sans-serif",
 }
 
 const rowBtn = {
   width: '100%', textAlign: 'left',
   background: '#161b22', border: `1px solid rgba(255,255,255,0.08)`,
   borderRadius: 8, padding: '11px 14px', marginBottom: 6,
-  cursor: 'pointer', color: '#f0f6fc', fontFamily: "'DM Mono', monospace",
+  cursor: 'pointer', color: '#f0f6fc', fontFamily: "'Inter', system-ui, sans-serif",
 }

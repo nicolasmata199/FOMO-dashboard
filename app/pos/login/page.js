@@ -34,7 +34,7 @@ export default function LoginPOS() {
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              style={{ width:'100%', boxSizing:'border-box', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8, padding:'10px 12px', color:C.text, fontSize:14, outline:'none', fontFamily:"'DM Mono',monospace" }}
+              style={{ width:'100%', boxSizing:'border-box', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8, padding:'10px 12px', color:C.text, fontSize:14, outline:'none', fontFamily:"'Inter', system-ui, sans-serif" }}
             />
           </div>
           <div style={{ marginBottom:20 }}>
@@ -43,7 +43,7 @@ export default function LoginPOS() {
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
-              style={{ width:'100%', boxSizing:'border-box', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8, padding:'10px 12px', color:C.text, fontSize:14, outline:'none', fontFamily:"'DM Mono',monospace" }}
+              style={{ width:'100%', boxSizing:'border-box', background:C.bg4, border:`1px solid ${C.border}`, borderRadius:8, padding:'10px 12px', color:C.text, fontSize:14, outline:'none', fontFamily:"'Inter', system-ui, sans-serif" }}
             />
           </div>
           {error && <div style={{ fontSize:13, color:C.red, marginBottom:16, textAlign:'center' }}>{error}</div>}
