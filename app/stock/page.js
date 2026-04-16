@@ -64,6 +64,9 @@ export default function StockPage() {
   const [catalogo, setCatalogo]         = useState([]) // [{nombre, categoria, costo_ars, precio_lista_ars, stock_minimo}]
   const [suggestions, setSuggestions]   = useState({}) // _id → [matches]
   const [openSug, setOpenSug]           = useState(null) // _id con dropdown abierto
+  // celular — tabla bulk
+  const newRowCel = () => ({ _id: Math.random(), imei: '', modelo: '', estado: 'nuevo', precio: '', sucursal: '695', costo: '' })
+  const [rowsCel, setRowsCel]           = useState(() => Array.from({ length: 5 }, newRowCel))
 
   // ── Ajustes ──────────────────────────────────────────────────────────────
   const [ajSucursal, setAjSucursal]     = useState('695')
@@ -263,6 +266,81 @@ export default function StockPage() {
     setRows(prev => prev.filter(r => r._id !== id))
   }
 
+  // ── Celulares bulk ────────────────────────────────────────────────────────
+  function handlePasteCel(e) {
+    const text = e.clipboardData.getData('text')
+    if (!text.includes('\t')) return
+    e.preventDefault()
+    const lines = text.trim().split('\n').filter(l => l.trim())
+    const parsed = lines.map(line => {
+      const c = line.split('\t')
+      const est = (c[2]?.trim().toLowerCase() || '').replace(' ', '_')
+      return {
+        _id: Math.random(),
+        imei:     c[0]?.trim() || '',
+        modelo:   c[1]?.trim() || '',
+        estado:   ['nuevo','usado_premium'].includes(est) ? est : 'nuevo',
+        precio:   c[3]?.trim().replace(/[$.]/g, '').replace(',', '.') || '',
+        sucursal: SUCURSALES.includes(c[4]?.trim()) ? c[4].trim() : '695',
+        costo:    c[5]?.trim().replace(/[$.]/g, '').replace(',', '.') || '',
+      }
+    })
+    setRowsCel([...parsed, ...Array.from({ length: 3 }, newRowCel)])
+  }
+
+  function updateRowCel(id, field, val) {
+    setRowsCel(prev => prev.map(r => r._id === id ? { ...r, [field]: val } : r))
+  }
+
+  function removeRowCel(id) {
+    setRowsCel(prev => prev.filter(r => r._id !== id))
+  }
+
+  function addRowsCel(n = 5) {
+    setRowsCel(prev => [...prev, ...Array.from({ length: n }, newRowCel)])
+  }
+
+  async function guardarCelulares() {
+    const validas = rowsCel.filter(r => r.imei.trim() && r.modelo.trim())
+    if (validas.length === 0) return
+    setSavingIng(true); setIngMsg(null)
+    let ok = 0, errores = 0
+    for (const row of validas) {
+      const estado = ['nuevo','usado_premium'].includes(row.estado) ? row.estado : 'nuevo'
+      const { error } = await sb.from('existencias').insert({
+        imei: row.imei.trim(),
+        modelo: row.modelo.trim(),
+        estado_equipo: estado,
+        estado_stock: 'disponible',
+        precio_venta_ars: row.precio ? parseFloat(row.precio) : null,
+        costo_ars: row.costo ? parseFloat(row.costo) : null,
+        sucursal: row.sucursal || '695',
+        fecha_ingreso: new Date().toISOString().split('T')[0],
+      })
+      if (!error) {
+        await sb.from('movimientos_stock').insert({
+          tipo: 'ingreso', producto_tipo: 'celular',
+          producto_descripcion: row.modelo.trim(),
+          imei: row.imei.trim(), sucursal: row.sucursal || '695',
+          cantidad_antes: 0, cantidad_despues: 1, diferencia: 1,
+          motivo: 'Ingreso de mercaderia',
+          usuario_id: usuario.id, usuario_nombre: usuario.nombre,
+        })
+        ok++
+      } else {
+        errores++
+      }
+    }
+    setSavingIng(false)
+    if (errores > 0) {
+      setIngMsg({ ok: false, text: ok + ' guardados, ' + errores + ' con error (IMEI duplicado?)' })
+    } else {
+      setIngMsg({ ok: true, text: '\u2713 ' + ok + ' celular(es) ingresado(s) correctamente' })
+      setRowsCel(Array.from({ length: 5 }, newRowCel))
+    }
+    cargarStock(sucursal)
+  }
+
   // ── Guardar ingreso accesorios bulk ───────────────────────────────────────
   async function guardarAccesorios() {
     const validas = rows.filter(r => r.nombre.trim() && (parseInt(r.q695)||0) + (parseInt(r.q642)||0) + (parseInt(r.qsj)||0) > 0)
@@ -415,7 +493,7 @@ export default function StockPage() {
         ))}
       </div>
 
-      <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: '20px 16px' }}>
 
         {/* ══ STOCK ACTUAL ══════════════════════════════════════════════════ */}
         {tab === 'stock' && (
@@ -477,7 +555,7 @@ export default function StockPage() {
 
         {/* ══ INGRESO ═══════════════════════════════════════════════════════ */}
         {tab === 'ingreso' && (
-          <div style={{ maxWidth: 540 }}>
+          <div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
               {['accesorio', 'celular'].map(t => (
                 <button key={t} onClick={() => { setTipoIngreso(t); setIngMsg(null) }} style={{
@@ -591,30 +669,68 @@ export default function StockPage() {
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <Field label="SUCURSAL">
-                  <select value={ingSuc} onChange={e => setIngSuc(e.target.value)} style={inp}>
-                    {SUCURSALES.map(s => <option key={s} value={s}>Sucursal {s.toUpperCase()}</option>)}
-                  </select>
-                </Field>
-                <Field label="IMEI *"><input value={ingImei} onChange={e => setIngImei(e.target.value)} placeholder="123456789012345" style={inp} /></Field>
-                <Field label="MODELO *"><input value={ingModelo} onChange={e => setIngModelo(e.target.value)} placeholder="iPhone 15 128GB" style={inp} /></Field>
-                <Field label="MARCA"><input value={ingMarca} onChange={e => setIngMarca(e.target.value)} placeholder="Apple / Samsung..." style={inp} /></Field>
-                <Field label="COLOR"><input value={ingColor} onChange={e => setIngColor(e.target.value)} placeholder="Negro / Blanco..." style={inp} /></Field>
-                <Field label="CONDICIÓN">
-                  <select value={ingCondicion} onChange={e => setIngCondicion(e.target.value)} style={inp}>
-                    <option value="nuevo">Nuevo</option>
-                    <option value="usado_premium">Usado Premium</option>
-                  </select>
-                </Field>
-                {ingCondicion !== 'nuevo' && (
-                  <Field label="BATERÍA %"><input value={ingBateria} onChange={e => setIngBateria(e.target.value)} placeholder="85" type="number" min="0" max="100" style={inp} /></Field>
-                )}
-                <Field label="COSTO (ARS)"><input value={ingCosto} onChange={e => setIngCosto(e.target.value)} placeholder="800000" type="number" style={inp} /></Field>
-                <Field label="PRECIO VENTA (ARS)"><input value={ingPrecio} onChange={e => setIngPrecio(e.target.value)} placeholder="1000000" type="number" style={inp} /></Field>
+              <div onPaste={handlePasteCel}>
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: C.bg3, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
+                  <strong style={{ color: C.text }}>Dos formas de cargar:</strong><br />
+                  <span style={{ color: C.accent }}>1. Tipear directo</span> en la tabla de abajo.<br />
+                  <span style={{ color: C.accent }}>2. Pegar desde Excel</span> — copi\u00e1 el rango y peg\u00e1 ac\u00e1 (Ctrl+V). Orden de columnas: <code style={{ background: C.bg4, padding: '1px 5px', borderRadius: 4 }}>IMEI | Modelo | Estado | Precio venta | Sucursal | Costo</code>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: C.bg4 }}>
+                        {['IMEI *', 'Modelo *', 'Estado', 'Precio venta ARS', 'Sucursal', 'Costo ARS', ''].map((h, i) => (
+                          <th key={i} style={{ padding: '7px 6px', color: C.text2, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rowsCel.map(row => (
+                        <tr key={row._id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: '3px 4px', minWidth: 160 }}>
+                            <input value={row.imei} onChange={e => updateRowCel(row._id, 'imei', e.target.value)} placeholder="123456789012345" style={cellInp} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 160 }}>
+                            <input value={row.modelo} onChange={e => updateRowCel(row._id, 'modelo', e.target.value)} placeholder="iPhone 15 128GB" style={cellInp} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 110 }}>
+                            <select value={row.estado} onChange={e => updateRowCel(row._id, 'estado', e.target.value)} style={{ ...cellInp, cursor: 'pointer' }}>
+                              <option value="nuevo">Nuevo</option>
+                              <option value="usado_premium">Usado premium</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 130 }}>
+                            <input value={row.precio} onChange={e => updateRowCel(row._id, 'precio', e.target.value)} placeholder="1000000" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 90 }}>
+                            <select value={row.sucursal} onChange={e => updateRowCel(row._id, 'sucursal', e.target.value)} style={{ ...cellInp, cursor: 'pointer' }}>
+                              {SUCURSALES.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: '3px 4px', minWidth: 110 }}>
+                            <input value={row.costo} onChange={e => updateRowCel(row._id, 'costo', e.target.value)} placeholder="800000" type="number" style={{ ...cellInp, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '3px 4px' }}>
+                            <button onClick={() => removeRowCel(row._id)} style={{ background: 'none', border: 'none', color: C.text2, cursor: 'pointer', fontSize: 16, padding: '2px 6px' }}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  <button onClick={() => addRowsCel(5)} style={{ background: C.bg3, border: `1px solid ${C.border}`, color: C.text2, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>+ 5 filas</button>
+                  <button onClick={() => setRowsCel(Array.from({ length: 5 }, newRowCel))} style={{ background: C.bg3, border: `1px solid ${C.border}`, color: C.red, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>Limpiar</button>
+                  <div style={{ fontSize: 11, color: C.text2, display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+                    {rowsCel.filter(r => r.imei.trim() && r.modelo.trim()).length} celulares listos
+                  </div>
+                </div>
+
                 {ingMsg && <Msg msg={ingMsg} />}
-                <button onClick={guardarCelular} disabled={savingIng || !ingImei || !ingModelo} style={btn(savingIng || !ingImei || !ingModelo)}>
-                  {savingIng ? 'Guardando...' : 'Ingresar celular'}
+                <button onClick={guardarCelulares} disabled={savingIng || rowsCel.every(r => !r.imei.trim())} style={btn(savingIng || rowsCel.every(r => !r.imei.trim()))}>
+                  {savingIng ? 'Guardando...' : 'Guardar ' + rowsCel.filter(r => r.imei.trim() && r.modelo.trim()).length + ' celular(es)'}
                 </button>
               </div>
             )}
